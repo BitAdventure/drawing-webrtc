@@ -246,7 +246,7 @@ app.post("/updateEvent/:eventId", auth, (req: any, res: any) => {
         );
         break;
       case "lines":
-        serverState[eventId].roundInfo.lines = data;
+        if (serverState[eventId]) serverState[eventId].roundInfo.lines = data;
         break;
     }
   } catch {
