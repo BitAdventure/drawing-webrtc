@@ -1,0 +1,41 @@
+.timer {
+  position: relative;
+  width: 100%;
+
+  & > svg {
+    width: 100%;
+    height: auto;
+
+    & > path {
+      transition: fill 0.2s ease-in-out;
+    }
+  }
+
+  & > span {
+    position: absolute;
+    font-family: ShantellSans;
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: normal;
+    color: #fff;
+    top: 1.59375rem;
+    right: 3.14375rem;
+    transition: color 0.2s ease-in-out;
+  }
+
+  &.yellow > svg > path {
+    fill: var(--secondary-yellow);
+  }
+
+  &.red > svg > path {
+    fill: var(--secondary-red);
+  }
+
+  &.yellow > span {
+    color: var(--secondary-yellow);
+  }
+
+  &.red > span {
+    color: var(--secondary-red);
+  }
+}

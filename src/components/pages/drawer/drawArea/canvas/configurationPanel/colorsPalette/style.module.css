@@ -1,0 +1,32 @@
+.paletteWrap {
+  position: relative;
+  width: 21.53125rem;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.colorsList {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: row wrap;
+  border-radius: 0.3125rem;
+  overflow: hidden;
+}
+
+.paletteColor {
+  width: calc(100% / 13);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+}
+
+.paletteText {
+  color: #d6d6d6;
+  text-align: center;
+  font-family: Nunito;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: normal;
+}

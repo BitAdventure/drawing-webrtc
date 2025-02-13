@@ -1,17 +1,50 @@
-# Realtime Collaborative Drawing with WebRTC + Canvas
+# React + TypeScript + Vite
 
-![Realtime Collaborative Drawing Demo](https://nyxtom.dev/assets/v0m78s45eb4xuyubkm2m.gif)
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-This is the code for my series on [realtime collaborative drawing](https://nyxtom.dev/2020/09/05/collaborative-drawing-webrtc-canvas/). The code is outlined in the blog posts. The dependencies are straightforward and mostly for the express server to run the signaling server. All the client-side javascript is vanilla javascript and requires no bundling or external dependencies.
+Currently, two official plugins are available:
 
-## Installation
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-To setup the express server you'll need to have [redis](https://redis.io/) installed in order to have the signal messages routed to each other properly (should you want to run multiple processes). This is outlined in my blog post about using [Redis PubSub](https://nyxtom.dev/2020/09/15/redis-pubsub-drawing/). Once you have redis installed, you can run the `npm install .` in the directory. Finally, run `node .` to start the server and open up a browser to create a drawing session.
+## Expanding the ESLint configuration
 
-## Contributing
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
-If you are interested in contributing to this project in any way, please feel free to open up a pull request and I wll be sure to take a look (and possibly a follow-up blog post). Thanks!
+- Configure the top-level `parserOptions` property like this:
 
-## LICENCE
+```js
+export default tseslint.config({
+  languageOptions: {
+    // other options...
+    parserOptions: {
+      project: ['./tsconfig.node.json', './tsconfig.app.json'],
+      tsconfigRootDir: import.meta.dirname,
+    },
+  },
+})
+```
 
-Licensed under the MIT license.
+- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
+- Optionally add `...tseslint.configs.stylisticTypeChecked`
+- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+
+```js
+// eslint.config.js
+import react from 'eslint-plugin-react'
+
+export default tseslint.config({
+  // Set the react version
+  settings: { react: { version: '18.3' } },
+  plugins: {
+    // Add the react plugin
+    react,
+  },
+  rules: {
+    // other rules...
+    // Enable its recommended rules
+    ...react.configs.recommended.rules,
+    ...react.configs['jsx-runtime'].rules,
+  },
+})
+```

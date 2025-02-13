@@ -1,0 +1,118 @@
+.drawAreaWrap {
+  position: relative;
+  flex-grow: 1;
+  max-width: calc(100% - 2 * 16.875rem - 1.25rem * 2);
+  background: center / 100% 100% no-repeat url("/bg/draw-area-bg.png");
+}
+
+.wordChoice,
+.answerResultWrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: rgba(54, 54, 54, 0.79);
+  z-index: 5;
+}
+
+.wordChoiceTitle {
+  font-family: ShantellSans;
+  color: #fff;
+  text-shadow: 0 0.25rem 0.25rem rgba(0, 0, 0, 0.25);
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wordsList {
+  position: relative;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 2.375rem;
+}
+
+.wordWrap {
+  position: relative;
+  /* background: center / 110% 140% no-repeat url("/bg/choose-word-border.png"); */
+  min-width: 10rem;
+  padding: 0.625rem 1rem;
+  color: #fff;
+  font-family: Nunito;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.2s ease-in-out;
+  overflow: visible;
+
+  /* & > svg {
+    position: absolute;
+    width: 110%;
+    height: auto;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    & > g > path {
+      transition: fill 0.2s ease-in-out;
+    }
+  } */
+
+  & > img {
+    position: absolute;
+    width: 110%;
+    height: 140%;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: filter 0.2s ease-in-out;
+  }
+
+  &:hover {
+    color: #e4c453;
+
+    & > img {
+      filter: brightness(0) invert(1);
+    }
+    /* 
+    & > svg > g > path {
+      fill: #fff;
+    } */
+  }
+}
+
+.canvasWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.answerResultWrap {
+  gap: 0.125rem;
+}
+
+.answerResultText {
+  color: #fff;
+  text-shadow: 0 0.25rem 0.25rem rgba(0, 0, 0, 0.25);
+  font-family: ShantellSans;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: normal;
+  text-transform: uppercase;
+}

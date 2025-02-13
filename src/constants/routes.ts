@@ -1,0 +1,9 @@
+export const HOME = "/";
+export const LOGIN = "login";
+export const PICK_AVATAR = "pick-avatar";
+export const EVENT_ID = ":id";
+export const BREAKOUT_ROOM = "breakout-room";
+export const RESULTS = "results";
+export const DRAW = "draw";
+export const REVIEW = "review";
+export const SETTINGS = "settings";

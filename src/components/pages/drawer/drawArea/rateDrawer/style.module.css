@@ -1,0 +1,19 @@
+.rateAreaWrap {
+  position: absolute;
+  z-index: 4;
+  top: 3.75rem;
+  right: 3.75rem;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0.625rem;
+
+  & > button {
+    cursor: pointer;
+
+    & > svg {
+      width: 1.75rem;
+      height: auto;
+    }
+  }
+}

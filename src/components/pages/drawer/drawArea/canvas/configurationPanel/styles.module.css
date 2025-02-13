@@ -1,0 +1,11 @@
+.configurationPanelWrap {
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  left: 0;
+  transform: translateY(calc(100% + 0.75rem));
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+}

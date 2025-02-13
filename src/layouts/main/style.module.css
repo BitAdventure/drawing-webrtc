@@ -1,0 +1,11 @@
+.pageWrapper {
+  position: relative;
+  width: 100%;
+  flex-grow: 1;
+  max-height: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  justify-content: center;
+  background: center / cover no-repeat url("/bg/main-bg.webp");
+}
