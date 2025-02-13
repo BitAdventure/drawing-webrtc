@@ -1,0 +1,19 @@
+services:
+  server:
+    build:
+      context: .
+    environment:
+      PORT: 3000
+      TOKEN_SECRET: secret
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+    ports:
+      - 3200:3000
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

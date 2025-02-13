@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./style.module.css";
 import AppLoader from "../../common/UI/appLoader/AppLoader";
 import { useParams } from "react-router-dom";
@@ -21,6 +14,8 @@ type UserPeerData = {
   peers: { [key: string]: any };
   channels: { [key: string]: any };
 };
+
+const ServerURL = import.meta.env.VITE_SERVER_URL || "";
 
 export type RoundType = {
   id: string;
@@ -43,10 +38,7 @@ type EventData = {
 const rtcConfig = {
   iceServers: [
     {
-      urls: [
-        "stun:stun.l.google.com:19302",
-        "stun:global.stun.twilio.com:3478",
-      ],
+      urls: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"],
     },
   ],
 };
@@ -59,16 +51,14 @@ const Drawer: React.FC = () => {
     peers: {},
     channels: {},
   });
-  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(
-    null
-  );
+  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const Context = createContext<EventData | null>(null);
 
   const getToken = useCallback(async () => {
     let actualToken: string = localStorage.getItem("jwtToken") || "";
     if (!actualToken) {
-      const res = await fetch(`${import.meta.env.VITE_SERVER_URL}/access`, {
+      const res = await fetch(`${ServerURL}/access`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +82,7 @@ const Drawer: React.FC = () => {
   }, []);
 
   const join = useCallback(async () => {
-    const res = await fetch(`${import.meta.env.VITE_SERVER_URL}/${id}/join`, {
+    const res = await fetch(`${ServerURL}/${id}/join`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -108,7 +98,7 @@ const Drawer: React.FC = () => {
 
   const relay = useCallback(
     (peerId: any, event: any, data: any) => {
-      fetch(`${import.meta.env.VITE_SERVER_URL}/relay/${peerId}/${event}`, {
+      fetch(`${ServerURL}/relay/${peerId}/${event}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +107,7 @@ const Drawer: React.FC = () => {
         body: JSON.stringify(data),
       });
     },
-    [token]
+    [token],
   );
 
   const onPeerData = useCallback(
@@ -150,7 +140,7 @@ const Drawer: React.FC = () => {
           break;
       }
     },
-    [eventDataRef, setEventData]
+    [eventDataRef, setEventData],
   );
 
   const createOffer = useCallback(
@@ -159,7 +149,7 @@ const Drawer: React.FC = () => {
       await peer.setLocalDescription(offer);
       await relay(peerId, "session-description", offer);
     },
-    [relay]
+    [relay],
   );
 
   const addPeer = useCallback(
@@ -201,7 +191,7 @@ const Drawer: React.FC = () => {
         };
       }
     },
-    [createOffer, onPeerData, relay]
+    [createOffer, onPeerData, relay],
   );
 
   const removePeer = useCallback((data: any) => {
@@ -226,7 +216,7 @@ const Drawer: React.FC = () => {
         await relay(message.peer.id, "session-description", answer);
       }
     },
-    [relay]
+    [relay],
   );
 
   const iceCandidate = useCallback((event: any) => {
@@ -240,7 +230,7 @@ const Drawer: React.FC = () => {
       setUserData(JSON.parse(event.data).user);
       join();
     },
-    [join]
+    [join],
   );
 
   const handleFinishRound = useCallback(() => {
@@ -257,19 +247,11 @@ const Drawer: React.FC = () => {
 
   useEffect(() => {
     if (token) {
-      const eventSource = new EventSource(
-        `${
-          import.meta.env.VITE_SERVER_URL
-        }/connect?token=${token}&eventId=${id}`
-      );
+      const eventSource = new EventSource(`${ServerURL}/connect?token=${token}&eventId=${id}`);
 
       eventSource.addEventListener("add-peer", addPeer, false);
       eventSource.addEventListener("remove-peer", removePeer, false);
-      eventSource.addEventListener(
-        "session-description",
-        sessionDescription,
-        false
-      );
+      eventSource.addEventListener("session-description", sessionDescription, false);
       eventSource.addEventListener("ice-candidate", iceCandidate, false);
       eventSource.addEventListener("connected", handleJoin);
       eventSource.addEventListener("finish-round", handleFinishRound, false);
@@ -289,7 +271,7 @@ const Drawer: React.FC = () => {
           channels[peerId].send(data);
         }
       }
-      fetch(`${import.meta.env.VITE_SERVER_URL}/updateEvent/${id}`, {
+      fetch(`${ServerURL}/updateEvent/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -298,7 +280,7 @@ const Drawer: React.FC = () => {
         body: data,
       });
     },
-    [id, token]
+    [id, token],
   );
 
   const handleStartGame = useCallback(() => {
@@ -320,19 +302,19 @@ const Drawer: React.FC = () => {
             word: data.word,
             status: RoundStatuses.ONGOING,
           },
-        }
+        },
     );
     broadcast(
       JSON.stringify({
         event: "start-round",
         data,
-      })
+      }),
     );
   }, [broadcast, id, setEventData]);
 
   const isDrawer = useMemo(
     () => eventData?.roundInfo.drawerId === userData?.id,
-    [eventData?.roundInfo.drawerId, userData?.id]
+    [eventData?.roundInfo.drawerId, userData?.id],
   );
 
   return loading || !eventData ? (
@@ -340,11 +322,7 @@ const Drawer: React.FC = () => {
   ) : (
     <Context.Provider value={eventData}>
       <div className={styles.contentWrap}>
-        <Header
-          drawTime={DRAW_TIME}
-          roundInfo={eventData.roundInfo}
-          isDrawer={isDrawer}
-        />
+        <Header drawTime={DRAW_TIME} roundInfo={eventData.roundInfo} isDrawer={isDrawer} />
         <main className={styles.mainAreaWrap}>
           <TestDrawArea
             handleStartGame={handleStartGame}

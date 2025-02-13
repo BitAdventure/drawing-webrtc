@@ -1,23 +1,25 @@
 import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
 import http from "http";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
-import { initializeRedisClient } from "redisClient.js";
+import { initializeRedisClient } from "./redisClient.js";
 import cors from "cors";
-import { RoundStatuses } from "enums.js";
+import { RoundStatuses } from "./enums.js";
 
 const DRAW_TIME = 75;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-// app.use("/static", express.static(`${__dirname}/static`));
-// app.use(express.json());
-
-// app.locals.index = 100000000000;
+app.use(express.static(path.join(__dirname, "static")));
 
 const server = http.createServer(app);
 const clients: any = {},
@@ -53,9 +55,9 @@ async function disconnected(client: any) {
           if (peerId !== client.id) {
             await redisClient.publish(`messages:${peerId}`, msg);
           }
-        })
+        }),
       );
-    })
+    }),
   );
 }
 
@@ -132,7 +134,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
       const { event, data } = JSON.parse(msg);
 
       client.emit(event, data);
-    }
+    },
   );
 
   // emit the connected state
@@ -180,7 +182,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
           eventId,
           offer: false,
         },
-      })
+      }),
     );
     redisClient.publish(
       `messages:${req.user.id}`,
@@ -191,7 +193,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
           eventId,
           offer: true,
         },
-      })
+      }),
     );
   });
 
@@ -242,7 +244,7 @@ app.post("/updateEvent/:eventId", auth, (req: any, res: any) => {
             delete timers[eventId];
             delete serverState[eventId];
           },
-          data.startTime + DRAW_TIME * 1000 - new Date().getTime()
+          data.startTime + DRAW_TIME * 1000 - new Date().getTime(),
         );
         break;
       case "lines":
@@ -254,6 +256,10 @@ app.post("/updateEvent/:eventId", auth, (req: any, res: any) => {
   }
 
   return res.sendStatus(200);
+});
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "static", "index.html"));
 });
 
 const PORT = process.env.PORT || 3001;
