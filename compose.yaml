@@ -12,8 +12,8 @@ services:
       - default
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.playlist-synchronizer.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.playlist-synchronizer.entrypoints=web-secure"
+      - "traefik.http.routers.drawing.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.drawing.entrypoints=web-secure"
     depends_on:
       - redis
 
