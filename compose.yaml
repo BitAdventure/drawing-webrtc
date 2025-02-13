@@ -7,6 +7,8 @@ services:
       TOKEN_SECRET: secret
       NODE_ENV: production
       REDIS_URL: redis://redis:6379
+    expose:
+      - 3000
     networks:
       - proxy
       - default
@@ -14,6 +16,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.drawing.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.drawing.entrypoints=web-secure"
+      - "traefik.http.services.drawing.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
     depends_on:
       - redis
 
