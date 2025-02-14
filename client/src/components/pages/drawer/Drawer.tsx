@@ -1,12 +1,13 @@
-import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import styles from "./style.module.css";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppLoader from "../../common/UI/appLoader/AppLoader";
 import { useParams } from "react-router-dom";
-import TestDrawArea from "./TESTDRAW/DrawArea";
+import TestDrawArea from "./drawArea/DrawArea";
 import { EventSource } from "extended-eventsource";
 import { RoundStatuses } from "../../../constants/enums";
 import Header from "./header/Header";
 import useStateRef from "react-usestateref";
+
+import styles from "./style.module.css";
 
 export type ToolType = "pen" | "eraser";
 const DRAW_TIME = 75;
@@ -38,7 +39,10 @@ type EventData = {
 const rtcConfig = {
   iceServers: [
     {
-      urls: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"],
+      urls: [
+        "stun:stun.l.google.com:19302",
+        "stun:global.stun.twilio.com:3478",
+      ],
     },
   ],
 };
@@ -51,9 +55,10 @@ const Drawer: React.FC = () => {
     peers: {},
     channels: {},
   });
-  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(null);
+  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(
+    null
+  );
   const [userData, setUserData] = useState<any>(null);
-  const Context = createContext<EventData | null>(null);
 
   const getToken = useCallback(async () => {
     let actualToken: string = localStorage.getItem("jwtToken") || "";
@@ -107,7 +112,7 @@ const Drawer: React.FC = () => {
         body: JSON.stringify(data),
       });
     },
-    [token],
+    [token]
   );
 
   const onPeerData = useCallback(
@@ -115,7 +120,7 @@ const Drawer: React.FC = () => {
       const msg = JSON.parse(data);
       switch (msg.event) {
         case "lines":
-          if (eventDataRef.current)
+          eventDataRef.current &&
             setEventData({
               ...eventDataRef.current,
               roundInfo: {
@@ -125,7 +130,7 @@ const Drawer: React.FC = () => {
             });
           break;
         case "start-round":
-          if (eventDataRef.current) {
+          eventDataRef.current &&
             setEventData({
               ...eventDataRef.current,
               roundInfo: {
@@ -135,12 +140,11 @@ const Drawer: React.FC = () => {
                 status: RoundStatuses.ONGOING,
               },
             });
-          }
 
           break;
       }
     },
-    [eventDataRef, setEventData],
+    [eventDataRef, setEventData]
   );
 
   const createOffer = useCallback(
@@ -149,7 +153,7 @@ const Drawer: React.FC = () => {
       await peer.setLocalDescription(offer);
       await relay(peerId, "session-description", offer);
     },
-    [relay],
+    [relay]
   );
 
   const addPeer = useCallback(
@@ -167,9 +171,8 @@ const Drawer: React.FC = () => {
 
       // handle ice candidate
       peer.onicecandidate = function (event) {
-        if (event.candidate) {
+        event.candidate &&
           relay(message.peer.id, "ice-candidate", event.candidate);
-        }
       };
 
       // generate offer if required (on join, this peer will create an offer
@@ -191,15 +194,13 @@ const Drawer: React.FC = () => {
         };
       }
     },
-    [createOffer, onPeerData, relay],
+    [createOffer, onPeerData, relay]
   );
 
   const removePeer = useCallback((data: any) => {
     const message = JSON.parse(data.data);
     const userPeers = userPeerData.current.peers;
-    if (userPeers[message.peer.id]) {
-      userPeers[message.peer.id].close();
-    }
+    userPeers[message.peer.id] && userPeers[message.peer.id].close();
 
     delete userPeers[message.peer.id];
   }, []);
@@ -216,7 +217,7 @@ const Drawer: React.FC = () => {
         await relay(message.peer.id, "session-description", answer);
       }
     },
-    [relay],
+    [relay]
   );
 
   const iceCandidate = useCallback((event: any) => {
@@ -230,11 +231,11 @@ const Drawer: React.FC = () => {
       setUserData(JSON.parse(event.data).user);
       join();
     },
-    [join],
+    [join]
   );
 
   const handleFinishRound = useCallback(() => {
-    if (eventDataRef.current) {
+    eventDataRef.current &&
       setEventData({
         ...eventDataRef.current,
         roundInfo: {
@@ -242,16 +243,21 @@ const Drawer: React.FC = () => {
           status: RoundStatuses.SHOW_RESULT,
         },
       });
-    }
   }, [eventDataRef, setEventData]);
 
   useEffect(() => {
     if (token) {
-      const eventSource = new EventSource(`${ServerURL}/connect?token=${token}&eventId=${id}`);
+      const eventSource = new EventSource(
+        `${ServerURL}/connect?token=${token}&eventId=${id}`
+      );
 
       eventSource.addEventListener("add-peer", addPeer, false);
       eventSource.addEventListener("remove-peer", removePeer, false);
-      eventSource.addEventListener("session-description", sessionDescription, false);
+      eventSource.addEventListener(
+        "session-description",
+        sessionDescription,
+        false
+      );
       eventSource.addEventListener("ice-candidate", iceCandidate, false);
       eventSource.addEventListener("connected", handleJoin);
       eventSource.addEventListener("finish-round", handleFinishRound, false);
@@ -267,9 +273,7 @@ const Drawer: React.FC = () => {
     (data: string) => {
       const channels = userPeerData.current.channels;
       for (const peerId in channels) {
-        if (channels[peerId].readyState === "open") {
-          channels[peerId].send(data);
-        }
+        channels[peerId].readyState === "open" && channels[peerId].send(data);
       }
       fetch(`${ServerURL}/updateEvent/${id}`, {
         method: "POST",
@@ -280,7 +284,7 @@ const Drawer: React.FC = () => {
         body: data,
       });
     },
-    [id, token],
+    [id, token]
   );
 
   const handleStartGame = useCallback(() => {
@@ -302,37 +306,39 @@ const Drawer: React.FC = () => {
             word: data.word,
             status: RoundStatuses.ONGOING,
           },
-        },
+        }
     );
     broadcast(
       JSON.stringify({
         event: "start-round",
         data,
-      }),
+      })
     );
   }, [broadcast, id, setEventData]);
 
   const isDrawer = useMemo(
     () => eventData?.roundInfo.drawerId === userData?.id,
-    [eventData?.roundInfo.drawerId, userData?.id],
+    [eventData?.roundInfo.drawerId, userData?.id]
   );
 
   return loading || !eventData ? (
     <AppLoader />
   ) : (
-    <Context.Provider value={eventData}>
-      <div className={styles.contentWrap}>
-        <Header drawTime={DRAW_TIME} roundInfo={eventData.roundInfo} isDrawer={isDrawer} />
-        <main className={styles.mainAreaWrap}>
-          <TestDrawArea
-            handleStartGame={handleStartGame}
-            broadcast={broadcast}
-            isDrawer={isDrawer}
-            roundInfo={eventData.roundInfo}
-          />
-        </main>
-      </div>
-    </Context.Provider>
+    <div className={styles.contentWrap}>
+      <Header
+        drawTime={DRAW_TIME}
+        roundInfo={eventData.roundInfo}
+        isDrawer={isDrawer}
+      />
+      <main className={styles.mainAreaWrap}>
+        <TestDrawArea
+          handleStartGame={handleStartGame}
+          broadcast={broadcast}
+          isDrawer={isDrawer}
+          roundInfo={eventData.roundInfo}
+        />
+      </main>
+    </div>
   );
 };
 

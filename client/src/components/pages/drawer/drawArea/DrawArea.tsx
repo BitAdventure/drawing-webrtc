@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RoundType, ToolType } from "../Drawer";
 import { Layer, Line, Stage } from "react-konva";
-import ConfigurationPanel from "../drawArea/canvas/configurationPanel/ConfigurationPanel";
+import ConfigurationPanel from "./canvas/configurationPanel/ConfigurationPanel";
 import { colors } from "../../../../constants/colors";
 import { v4 as uuidv4 } from "uuid";
 import useThrottle from "../../../../hooks/useThrottle";
 import { RoundStatuses } from "../../../../constants/enums";
+import Results from "./results/Results";
+import WordChoiceWaiting from "./wordChoiceWaiting/WordChoiceWaiting";
 
 import styles from "./../style.module.css";
-import Results from "../drawArea/results/Results";
-import WordChoiceWaiting from "../drawArea/wordChoiceWaiting/WordChoiceWaiting";
 
 const thicknessList = [10, 20, 40];
 
@@ -38,7 +38,7 @@ const TestDrawArea: React.FC<PropsType> = ({
   const resizeTimerRef = useRef<number>(0);
 
   const handleUpdateLines = useCallback(() => {
-    if (isDrawer)
+    isDrawer &&
       broadcast(
         JSON.stringify({
           event: "lines",
@@ -46,9 +46,6 @@ const TestDrawArea: React.FC<PropsType> = ({
         })
       );
   }, [lines, broadcast, isDrawer]);
-  // const handleUpdateLines = useCallback(() => {
-  //   isDrawer && socket.emit("update-lines", { roundId: currentRound.id, lines });
-  // }, [currentRound.id, socket, isDrawer, lines]);
 
   useThrottle(lines, handleUpdateLines, 1200);
 
