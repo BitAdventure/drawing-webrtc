@@ -26,7 +26,6 @@ const clients: any = {},
   serverState: any = {},
   timers: any = {};
 
-// const redisClient = createClient();
 const redisClient = await initializeRedisClient();
 const pubSubRedisClient = await initializeRedisClient();
 
@@ -55,9 +54,9 @@ async function disconnected(client: any) {
           if (peerId !== client.id) {
             await redisClient.publish(`messages:${peerId}`, msg);
           }
-        }),
+        })
       );
-    }),
+    })
   );
 }
 
@@ -134,7 +133,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
       const { event, data } = JSON.parse(msg);
 
       client.emit(event, data);
-    },
+    }
   );
 
   // emit the connected state
@@ -182,7 +181,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
           eventId,
           offer: false,
         },
-      }),
+      })
     );
     redisClient.publish(
       `messages:${req.user.id}`,
@@ -193,7 +192,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
           eventId,
           offer: true,
         },
-      }),
+      })
     );
   });
 
@@ -202,7 +201,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
   return res.json(serverState[eventId]);
 });
 
-app.post("/relay/:peerId/:event", auth, (req: any, res: any) => {
+app.post("/relay/:peerId/:event", auth, async (req: any, res: any) => {
   const peerId = req.params.peerId;
   const msg = {
     event: req.params.event,
@@ -211,7 +210,7 @@ app.post("/relay/:peerId/:event", auth, (req: any, res: any) => {
       data: req.body,
     },
   };
-  redisClient.publish(`messages:${peerId}`, JSON.stringify(msg));
+  await redisClient.publish(`messages:${peerId}`, JSON.stringify(msg));
   return res.sendStatus(200);
 });
 
@@ -244,7 +243,7 @@ app.post("/updateEvent/:eventId", auth, (req: any, res: any) => {
             delete timers[eventId];
             delete serverState[eventId];
           },
-          data.startTime + DRAW_TIME * 1000 - new Date().getTime(),
+          data.startTime + DRAW_TIME * 1000 - new Date().getTime()
         );
         break;
       case "lines":

@@ -102,8 +102,8 @@ const Drawer: React.FC = () => {
   }, [id, token, setEventData]);
 
   const relay = useCallback(
-    (peerId: any, event: any, data: any) => {
-      fetch(`${ServerURL}/relay/${peerId}/${event}`, {
+    async (peerId: any, event: any, data: any) => {
+      await fetch(`${ServerURL}/relay/${peerId}/${event}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +157,7 @@ const Drawer: React.FC = () => {
   );
 
   const addPeer = useCallback(
-    (data: any) => {
+    async (data: any) => {
       const message = JSON.parse(data.data);
       if (userPeerData.current.peers[message.peer.id]) {
         return;
@@ -169,12 +169,6 @@ const Drawer: React.FC = () => {
       const peer = new RTCPeerConnection(rtcConfig);
       userPeerDataValue.peers[message.peer.id] = peer;
 
-      // handle ice candidate
-      peer.onicecandidate = function (event) {
-        event.candidate &&
-          relay(message.peer.id, "ice-candidate", event.candidate);
-      };
-
       // generate offer if required (on join, this peer will create an offer
       // to every other peer in the network, thus forming a mesh)
       if (message.offer) {
@@ -184,7 +178,7 @@ const Drawer: React.FC = () => {
           onPeerData(message.peer.id, event.data);
         };
         userPeerDataValue.channels[message.peer.id] = channel;
-        createOffer(message.peer.id, peer);
+        await createOffer(message.peer.id, peer);
       } else {
         peer.ondatachannel = function (event) {
           userPeerDataValue.channels[message.peer.id] = event.channel;
@@ -193,6 +187,12 @@ const Drawer: React.FC = () => {
           };
         };
       }
+
+      // handle ice candidate
+      peer.onicecandidate = async function (event) {
+        event.candidate &&
+          (await relay(message.peer.id, "ice-candidate", event.candidate));
+      };
     },
     [createOffer, onPeerData, relay]
   );
@@ -220,16 +220,21 @@ const Drawer: React.FC = () => {
     [relay]
   );
 
-  const iceCandidate = useCallback((event: any) => {
+  const iceCandidate = useCallback(async (event: any) => {
     const message = JSON.parse(event.data);
-    const peer = userPeerData.current.peers[message.peer.id];
-    peer.addIceCandidate(new RTCIceCandidate(message.data));
+    const peer: RTCPeerConnection = userPeerData.current.peers[message.peer.id];
+
+    const iceCandidateInit = new RTCIceCandidate(message.data);
+    console.log("PEER: ", peer);
+    console.log("ice candidate init: ", iceCandidateInit);
+
+    await peer.addIceCandidate(iceCandidateInit);
   }, []);
 
   const handleJoin = useCallback(
-    (event: any) => {
+    async (event: any) => {
       setUserData(JSON.parse(event.data).user);
-      join();
+      await join();
     },
     [join]
   );
