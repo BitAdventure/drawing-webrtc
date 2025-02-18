@@ -38,12 +38,14 @@ type EventData = {
 
 const rtcConfig = {
   iceServers: [
-    {
-      urls: [
-        "stun:stun.l.google.com:19302",
-        "stun:global.stun.twilio.com:3478",
-      ],
-    },
+    { urls: "stun:freestun.net:3478" },
+    { urls: "turn:freestun.net:3478", username: "free", credential: "free" },
+    // {
+    //   urls: [
+    //     "stun:stun.l.google.com:19302",
+    //     "stun:global.stun.twilio.com:3478",
+    //   ],
+    // },
   ],
 };
 
@@ -190,6 +192,7 @@ const Drawer: React.FC = () => {
 
       // handle ice candidate
       peer.onicecandidate = async function (event) {
+        console.log("ICE candidate event:", JSON.parse(JSON.stringify(event)));
         event.candidate &&
           (await relay(message.peer.id, "ice-candidate", event.candidate));
       };
@@ -210,7 +213,12 @@ const Drawer: React.FC = () => {
       const message = JSON.parse(data.data);
       const peer = userPeerData.current.peers[message.peer.id];
       const remoteDescription = new RTCSessionDescription(message.data);
+      console.log(
+        "Setting remote description:",
+        JSON.parse(JSON.stringify(remoteDescription))
+      );
       await peer.setRemoteDescription(remoteDescription);
+
       if (remoteDescription.type === "offer") {
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
@@ -225,8 +233,15 @@ const Drawer: React.FC = () => {
     const peer: RTCPeerConnection = userPeerData.current.peers[message.peer.id];
 
     const iceCandidateInit = new RTCIceCandidate(message.data);
-    console.log("PEER: ", peer);
-    console.log("ice candidate init: ", iceCandidateInit);
+    console.log("PEER: ", JSON.parse(JSON.stringify(peer)));
+    console.log(
+      "args for ice candidate init: ",
+      JSON.parse(JSON.stringify(message.data))
+    );
+    console.log(
+      "ice candidate init: ",
+      JSON.parse(JSON.stringify(iceCandidateInit))
+    );
 
     await peer.addIceCandidate(iceCandidateInit);
   }, []);
