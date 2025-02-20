@@ -183,6 +183,7 @@ const Drawer: React.FC = () => {
         await createOffer(message.peer.id, peer);
       } else {
         peer.ondatachannel = function (event) {
+          console.log("PEER.ONDATACHANNEL: ", event, new Date().getTime());
           userPeerDataValue.channels[message.peer.id] = event.channel;
           event.channel.onmessage = function (evt) {
             onPeerData(message.peer.id, evt.data);
@@ -192,8 +193,7 @@ const Drawer: React.FC = () => {
 
       // handle ice candidate
       peer.onicecandidate = async function (event) {
-        console.log("ICE candidate event:", event);
-        console.log("ICE candidate event current target:", event.currentTarget);
+        console.log("ICE candidate event:", event, new Date().getTime());
         event.candidate &&
           (await relay(message.peer.id, "ice-candidate", event.candidate));
       };
@@ -216,13 +216,19 @@ const Drawer: React.FC = () => {
       const remoteDescription = new RTCSessionDescription(message.data);
       console.log(
         "Setting remote description:",
-        JSON.parse(JSON.stringify(remoteDescription))
+        JSON.parse(JSON.stringify(remoteDescription)),
+        new Date().getTime()
       );
       await peer.setRemoteDescription(remoteDescription);
 
       if (remoteDescription.type === "offer") {
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
+        console.log(
+          "Setting local description:",
+          JSON.parse(JSON.stringify(answer)),
+          new Date().getTime()
+        );
         await relay(message.peer.id, "session-description", answer);
       }
     },
@@ -234,7 +240,7 @@ const Drawer: React.FC = () => {
     const peer: RTCPeerConnection = userPeerData.current.peers[message.peer.id];
 
     const iceCandidateInit = new RTCIceCandidate(message.data);
-    console.log("PEER: ", peer);
+    console.log("PEER: ", peer, new Date().getTime());
 
     await peer.addIceCandidate(iceCandidateInit);
   }, []);
