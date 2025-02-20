@@ -192,7 +192,8 @@ const Drawer: React.FC = () => {
 
       // handle ice candidate
       peer.onicecandidate = async function (event) {
-        console.log("ICE candidate event:", JSON.parse(JSON.stringify(event)));
+        console.log("ICE candidate event:", event);
+        console.log("ICE candidate event current target:", event.currentTarget);
         event.candidate &&
           (await relay(message.peer.id, "ice-candidate", event.candidate));
       };
@@ -233,15 +234,7 @@ const Drawer: React.FC = () => {
     const peer: RTCPeerConnection = userPeerData.current.peers[message.peer.id];
 
     const iceCandidateInit = new RTCIceCandidate(message.data);
-    console.log("PEER: ", JSON.parse(JSON.stringify(peer)));
-    console.log(
-      "args for ice candidate init: ",
-      JSON.parse(JSON.stringify(message.data))
-    );
-    console.log(
-      "ice candidate init: ",
-      JSON.parse(JSON.stringify(iceCandidateInit))
-    );
+    console.log("PEER: ", peer);
 
     await peer.addIceCandidate(iceCandidateInit);
   }, []);
