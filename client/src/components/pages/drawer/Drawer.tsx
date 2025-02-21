@@ -12,8 +12,8 @@ import styles from "./style.module.css";
 export type ToolType = "pen" | "eraser";
 const DRAW_TIME = 75;
 type UserPeerData = {
-  peers: { [key: string]: any };
-  channels: { [key: string]: any };
+  peers: { [key: string]: RTCPeerConnection };
+  channels: { [key: string]: RTCDataChannel };
 };
 
 const ServerURL = import.meta.env.VITE_SERVER_URL || "";
@@ -150,10 +150,11 @@ const Drawer: React.FC = () => {
   );
 
   const createOffer = useCallback(
-    async (peerId: string, peer: any) => {
+    async (peerId: string, peer: RTCPeerConnection) => {
       const offer = await peer.createOffer();
+      if (peer.signalingState != "stable") return;
       await peer.setLocalDescription(offer);
-      await relay(peerId, "session-description", offer);
+      relay(peerId, "session-description", offer);
     },
     [relay]
   );
@@ -171,16 +172,25 @@ const Drawer: React.FC = () => {
       const peer = new RTCPeerConnection(rtcConfig);
       userPeerDataValue.peers[message.peer.id] = peer;
 
+      // handle ice candidate
+      peer.onicecandidate = async function (event) {
+        console.log("ICE candidate event:", event, new Date().getTime());
+        event.candidate &&
+          relay(message.peer.id, "ice-candidate", event.candidate);
+      };
+
       // generate offer if required (on join, this peer will create an offer
       // to every other peer in the network, thus forming a mesh)
       if (message.offer) {
+        peer.onnegotiationneeded = async () => {
+          await createOffer(message.peer.id, peer);
+        };
         // create the data channel, map peer updates
         const channel = peer.createDataChannel("updates");
         channel.onmessage = function (event) {
           onPeerData(message.peer.id, event.data);
         };
         userPeerDataValue.channels[message.peer.id] = channel;
-        await createOffer(message.peer.id, peer);
       } else {
         peer.ondatachannel = function (event) {
           console.log("PEER.ONDATACHANNEL: ", event, new Date().getTime());
@@ -190,13 +200,6 @@ const Drawer: React.FC = () => {
           };
         };
       }
-
-      // handle ice candidate
-      peer.onicecandidate = async function (event) {
-        console.log("ICE candidate event:", event, new Date().getTime());
-        event.candidate &&
-          (await relay(message.peer.id, "ice-candidate", event.candidate));
-      };
     },
     [createOffer, onPeerData, relay]
   );
@@ -214,19 +217,38 @@ const Drawer: React.FC = () => {
       const message = JSON.parse(data.data);
       const peer = userPeerData.current.peers[message.peer.id];
       const remoteDescription = new RTCSessionDescription(message.data);
-      console.log(
-        "Setting remote description:",
-        JSON.parse(JSON.stringify(remoteDescription)),
-        new Date().getTime()
-      );
-      await peer.setRemoteDescription(remoteDescription);
+      // console.log(
+      //   "Setting remote description:",
+      //   remoteDescription,
+      //   new Date().getTime()
+      // );
+      // await peer.setRemoteDescription(remoteDescription);
+
+      if (
+        remoteDescription.type === "offer" &&
+        peer.signalingState != "stable"
+      ) {
+        return;
+        // if (!message.peer.polite) return;
+        // await Promise.all([
+        //   peer.setLocalDescription({type: "rollback"}),
+        //   peer.setRemoteDescription(remoteDescription)
+        // ]);
+      } else {
+        console.log(
+          "Setting remote description:",
+          remoteDescription,
+          new Date().getTime()
+        );
+        await peer.setRemoteDescription(remoteDescription);
+      }
 
       if (remoteDescription.type === "offer") {
         const answer = await peer.createAnswer();
         await peer.setLocalDescription(answer);
         console.log(
           "Setting local description:",
-          JSON.parse(JSON.stringify(answer)),
+          peer.localDescription,
           new Date().getTime()
         );
         await relay(message.peer.id, "session-description", answer);
