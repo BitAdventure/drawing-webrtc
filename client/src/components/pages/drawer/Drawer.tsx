@@ -226,14 +226,14 @@ const Drawer: React.FC = () => {
 
       if (
         remoteDescription.type === "offer" &&
-        peer.signalingState != "stable"
+        peer.signalingState !== "stable"
       ) {
-        return;
-        // if (!message.peer.polite) return;
-        // await Promise.all([
-        //   peer.setLocalDescription({type: "rollback"}),
-        //   peer.setRemoteDescription(remoteDescription)
-        // ]);
+        // return;
+        // // if (!message.peer.polite) return;
+        await Promise.all([
+          peer.setLocalDescription({ type: "rollback" }),
+          peer.setRemoteDescription(remoteDescription),
+        ]);
       } else {
         console.log(
           "Setting remote description:",
