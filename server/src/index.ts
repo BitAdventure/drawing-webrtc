@@ -5,9 +5,10 @@ import http from "http";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
-import { initializeRedisClient } from "./redisClient.js";
+import { initializeRedisClient, redisOptions } from "./redisClient.js";
 import cors from "cors";
 import { RoundStatuses } from "./enums.js";
+import { Job, Queue, Worker } from "bullmq";
 
 const DRAW_TIME = 75;
 
@@ -116,7 +117,6 @@ app.get("/connect", auth, async (req: any, res: any) => {
     eventId,
     user: req.user,
     redis: pubSubRedisClient,
-    // redis: initializeRedisClient(),
     emit: (event: any, data: any) => {
       res.write(`id: ${uuidv4()}\n`);
       res.write(`event: ${event}\n`);
@@ -149,8 +149,8 @@ app.get("/connect", auth, async (req: any, res: any) => {
   });
 });
 
-app.post("/:eventId/join", auth, async (req: any, res: any) => {
-  const eventId = req.params.eventId;
+const processJoin = async (job: Job) => {
+  const { user, eventId } = job.data;
 
   if (!serverState[eventId]) {
     serverState[eventId] = {
@@ -161,30 +161,32 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
         status: RoundStatuses.UPCOMING,
         startTime: 0,
         word: null,
-        drawerId: req.user.id,
+        drawerId: user.id,
         lines: [],
       },
     };
   }
 
-  await redisClient.sAdd(`${req.user.id}:channels`, eventId);
+  await redisClient.sAdd(`${user.id}:channels`, eventId);
 
   const peerIds = await redisClient.sMembers(`channels:${eventId}`);
-
+  console.log(
+    `PEER IDS FOR USER ${user.id}, EVENT ${eventId}: ${JSON.stringify(peerIds)}`
+  );
   peerIds.forEach((peerId: any) => {
     redisClient.publish(
       `messages:${peerId}`,
       JSON.stringify({
         event: "add-peer",
         data: {
-          peer: req.user,
+          peer: user,
           eventId,
           offer: false,
         },
       })
     );
     redisClient.publish(
-      `messages:${req.user.id}`,
+      `messages:${user.id}`,
       JSON.stringify({
         event: "add-peer",
         data: {
@@ -196,9 +198,54 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
     );
   });
 
-  await redisClient.sAdd(`channels:${eventId}`, req.user.id);
+  await redisClient.sAdd(`channels:${eventId}`, user.id);
+};
 
-  return res.json(serverState[eventId]);
+// Create a worker for a specific eventId
+function createWorker(eventId: string) {
+  const worker = new Worker(eventId, processJoin, {
+    connection: redisOptions,
+    limiter: {
+      max: 1, // Only one job processed at a time
+      duration: 1000, // Allow one job every second (optional)
+    },
+  });
+
+  // Subscribe to the completed event
+  worker.on("completed", (job: Job) => {
+    console.log(
+      `Job for user ${job.data.user.id} successfully completed for event ${job.data.eventId}`
+    );
+    clients[job.data.user.id].emit(
+      "join-completed",
+      serverState[job.data.eventId]
+    );
+    // Add any additional logic you want to execute on completion here
+  });
+
+  worker.on("error", (err) => {
+    // log the error
+    console.error("WORKER ERROR: ", err);
+  });
+
+  return worker;
+}
+
+app.post("/:eventId/join", auth, async (req: any, res: any) => {
+  const eventId = req.params.eventId;
+  const user = req.user;
+
+  const queue = new Queue(eventId, {
+    connection: { url: process.env.REDIS_URL || "redis://localhost:6379" },
+  });
+
+  // Create a worker to process jobs in this queue
+  createWorker(eventId);
+
+  // Add a job to the event-specific queue
+  await queue.add("joinJob", { user, eventId });
+
+  return res.sendStatus(200);
 });
 
 app.post("/relay/:peerId/:event", auth, async (req: any, res: any) => {

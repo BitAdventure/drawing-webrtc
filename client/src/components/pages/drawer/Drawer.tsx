@@ -89,19 +89,29 @@ const Drawer: React.FC = () => {
   }, []);
 
   const join = useCallback(async () => {
-    const res = await fetch(`${ServerURL}/${id}/join`, {
+    await fetch(`${ServerURL}/${id}/join`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-    }).then((res) => res);
+    });
+  }, [id, token]);
 
-    const serverEventData: EventData = await res.json();
-    setEventData(serverEventData);
+  // const join = useCallback(async () => {
+  //   const res = await fetch(`${ServerURL}/${id}/join`, {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //       Authorization: `Bearer ${token}`,
+  //     },
+  //   }).then((res) => res);
 
-    setLoading(false);
-  }, [id, token, setEventData]);
+  //   const serverEventData: EventData = await res.json();
+  //   setEventData(serverEventData);
+
+  //   setLoading(false);
+  // }, [id, token, setEventData]);
 
   const relay = useCallback(
     async (peerId: any, event: any, data: any) => {
@@ -275,6 +285,15 @@ const Drawer: React.FC = () => {
     [join]
   );
 
+  const handleCompleteJoin = useCallback(
+    async (event: any) => {
+      setEventData(JSON.parse(event.data));
+
+      setLoading(false);
+    },
+    [setEventData]
+  );
+
   const handleFinishRound = useCallback(() => {
     eventDataRef.current &&
       setEventData({
@@ -301,6 +320,7 @@ const Drawer: React.FC = () => {
       );
       eventSource.addEventListener("ice-candidate", iceCandidate, false);
       eventSource.addEventListener("connected", handleJoin);
+      eventSource.addEventListener("join-completed", handleCompleteJoin);
       eventSource.addEventListener("finish-round", handleFinishRound, false);
 
       return () => {
