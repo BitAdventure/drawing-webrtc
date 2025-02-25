@@ -31,6 +31,7 @@ const redisClient = await initializeRedisClient();
 const pubSubRedisClient = await initializeRedisClient();
 
 async function disconnected(client: any) {
+  console.log(`Client ${client.id} disconnected`);
   delete clients[client.id];
   await redisClient.del(`messages:${client.id}`);
   await redisClient.del(`messages:${client.eventId}`);
@@ -125,6 +126,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
   };
 
   // cache the current connection until it disconnects
+  console.log(`Client ${client.id} connected`);
   clients[client.id] = client;
 
   client.redis.subscribe(
@@ -216,6 +218,7 @@ function createWorker(eventId: string) {
     console.log(
       `Job for user ${job.data.user.id} successfully completed for event ${job.data.eventId}`
     );
+    console.log(`Clients: ${JSON.stringify(clients)}`);
     clients[job.data.user.id].emit(
       "join-completed",
       serverState[job.data.eventId]
