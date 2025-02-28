@@ -8,6 +8,7 @@ import Header from "./header/Header";
 import useStateRef from "react-usestateref";
 
 import styles from "./style.module.css";
+import useMountEffect from "../../../hooks/useMountEffect";
 
 enum ConnectionState {
   CONNECTED = "connected",
@@ -61,7 +62,7 @@ const rtcConfig = {
     { urls: "stun:global.stun.twilio.com:3478" },
     // Existing freestun servers as fallback
     { urls: "stun:freestun.net:3478" },
-    { urls: "turn:freestun.net:3478", username: "free", credential: "free" }
+    { urls: "turn:freestun.net:3478", username: "free", credential: "free" },
   ],
   iceCandidatePoolSize: 10, // Add candidate pool for faster connections
 };
@@ -114,9 +115,9 @@ const Drawer: React.FC = () => {
     setToken(actualToken);
   }, []);
 
-  useEffect(() => {
+  useMountEffect(() => {
     getToken();
-  }, []);
+  });
 
   const join = useCallback(async () => {
     try {
@@ -131,11 +132,11 @@ const Drawer: React.FC = () => {
       if (!response.ok) {
         throw new Error("Failed to join session");
       }
-
     } catch (error) {
       console.error("Error joining session:", error);
       scheduleReconnect();
     }
+    // eslint-disable-next-line
   }, [id, token]);
 
   const scheduleReconnect = useCallback(() => {
@@ -146,25 +147,21 @@ const Drawer: React.FC = () => {
     reconnectTimeoutRef.current = setTimeout(() => {
       reconnectToEventSource();
     }, RECONNECT_TIMEOUT);
+    // eslint-disable-next-line
   }, []);
 
   const reconnectToEventSource = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    eventSourceRef.current && eventSourceRef.current.close();
 
     setupEventSource();
 
-    if (token) {
-      join();
-    }
+    token && join();
+    // eslint-disable-next-line
   }, [join, token]);
 
   const clearAllPeers = useCallback(() => {
-    Object.values(userPeerData.current.peers).forEach(peer => {
-      if (peer) {
-        peer.close();
-      }
+    Object.values(userPeerData.current.peers).forEach((peer) => {
+      peer.close();
     });
 
     userPeerData.current.peers = {};
@@ -172,11 +169,18 @@ const Drawer: React.FC = () => {
     userPeerData.current.connectionState = {};
     userPeerData.current.reconnectAttempts = {};
 
-    Object.values(iceTimeoutsRef.current).forEach(timeout => {
+    Object.values(iceTimeoutsRef.current).forEach((timeout) => {
       clearTimeout(timeout);
     });
     iceTimeoutsRef.current = {};
   }, []);
+
+  const updatePeerConnectionState = useCallback(
+    (peerId: string, state: ConnectionState) => {
+      userPeerData.current.connectionState[peerId] = state;
+    },
+    []
+  );
 
   const relay = useCallback(
     async (peerId: any, event: any, data: any) => {
@@ -198,12 +202,8 @@ const Drawer: React.FC = () => {
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       }
     },
-    [token]
+    [token, updatePeerConnectionState]
   );
-
-  const updatePeerConnectionState = useCallback((peerId: string, state: ConnectionState) => {
-    userPeerData.current.connectionState[peerId] = state;
-  }, []);
 
   const onPeerData = useCallback(
     (peerId: string, data: any) => {
@@ -235,7 +235,9 @@ const Drawer: React.FC = () => {
           case "ping": {
             const channel = userPeerData.current.channels[peerId];
             if (channel && channel.readyState === "open") {
-              channel.send(JSON.stringify({ event: "pong", timestamp: Date.now() }));
+              channel.send(
+                JSON.stringify({ event: "pong", timestamp: Date.now() })
+              );
             }
             break;
           }
@@ -256,12 +258,14 @@ const Drawer: React.FC = () => {
         await peer.setLocalDescription(offer);
         relay(peerId, "session-description", offer);
 
-        if (iceTimeoutsRef.current[peerId]) {
+        iceTimeoutsRef.current[peerId] &&
           clearTimeout(iceTimeoutsRef.current[peerId]);
-        }
 
         iceTimeoutsRef.current[peerId] = setTimeout(() => {
-          if (userPeerData.current.connectionState[peerId] !== ConnectionState.CONNECTED) {
+          if (
+            userPeerData.current.connectionState[peerId] !==
+            ConnectionState.CONNECTED
+          ) {
             console.warn(`ICE gathering timed out for peer ${peerId}`);
             handlePeerDisconnect(peerId);
           }
@@ -271,166 +275,194 @@ const Drawer: React.FC = () => {
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       }
     },
-    [relay]
+    // eslint-disable-next-line
+    [relay, updatePeerConnectionState]
   );
 
-  const handlePeerDisconnect = useCallback((peerId: string) => {
-  const peerData = userPeerData.current;
+  const handlePeerDisconnect = useCallback(
+    (peerId: string) => {
+      const peerData = userPeerData.current;
 
-  // Don't immediately disconnect on ICE errors - check if we have any working candidates
-  const peer = peerData.peers[peerId];
-  if (peer && (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed")) {
-    // If we're already connected, don't disconnect based on individual ICE errors
-    console.log(`Ignoring disconnect request for connected peer ${peerId}`);
-    return;
-  }
-
-  updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-
-  if (!peerData.reconnectAttempts[peerId]) {
-    peerData.reconnectAttempts[peerId] = 0;
-  }
-
-  peerData.reconnectAttempts[peerId]++;
-
-  if (peerData.reconnectAttempts[peerId] <= MAX_RECONNECT_ATTEMPTS) {
-    console.log(`Attempting to reconnect to peer ${peerId}, attempt ${peerData.reconnectAttempts[peerId]}`);
-
-    if (peerData.peers[peerId]) {
-      // Don't close existing connection immediately - try to renegotiate first
-      try {
-        // Only restart ICE instead of closing the connection entirely
-        if (peer && peer.restartIce) {
-          console.log(`Restarting ICE for peer ${peerId}`);
-          peer.restartIce();
-
-          // Try creating a new offer after ICE restart
-          setTimeout(() => {
-            if (peerData.peers[peerId] && peerData.peers[peerId].signalingState === "stable") {
-              createOffer(peerId, peerData.peers[peerId]);
-            }
-          }, 1000);
-
-          return;
-        }
-      } catch (error) {
-        console.error(`Error restarting ICE for peer ${peerId}:`, error);
+      // Don't immediately disconnect on ICE errors - check if we have any working candidates
+      const peer = peerData.peers[peerId];
+      if (
+        peer?.iceConnectionState === "connected" ||
+        peer?.iceConnectionState === "completed"
+      ) {
+        // If we're already connected, don't disconnect based on individual ICE errors
+        console.log(`Ignoring disconnect request for connected peer ${peerId}`);
+        return;
       }
 
-      // If ICE restart fails or isn't available, then close and recreate
-      peerData.peers[peerId].close();
-      delete peerData.peers[peerId];
-    }
+      updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
 
-    relay(peerId, "reconnect-request", { timestamp: Date.now() });
-  } else {
-    console.error(`Max reconnection attempts reached for peer ${peerId}`);
-  }
-}, [relay, updatePeerConnectionState, createOffer]);
+      if (!peerData.reconnectAttempts[peerId]) {
+        peerData.reconnectAttempts[peerId] = 0;
+      }
 
-  const setupPeerConnectionListeners = useCallback((peer: RTCPeerConnection, peerId: string) => {
-  // Add temporary state to track consecutive failures
-  let consecutiveFailures = 0;
+      peerData.reconnectAttempts[peerId]++;
 
-  peer.oniceconnectionstatechange = () => {
-    console.log(`ICE connection state for ${peerId}: ${peer.iceConnectionState}`);
+      if (peerData.reconnectAttempts[peerId] <= MAX_RECONNECT_ATTEMPTS) {
+        console.log(
+          `Attempting to reconnect to peer ${peerId}, attempt ${peerData.reconnectAttempts[peerId]}`
+        );
 
-    switch (peer.iceConnectionState) {
-      case "connected":
-      case "completed":
-        if (iceTimeoutsRef.current[peerId]) {
-          clearTimeout(iceTimeoutsRef.current[peerId]);
-          delete iceTimeoutsRef.current[peerId];
-        }
-        updatePeerConnectionState(peerId, ConnectionState.CONNECTED);
-        userPeerData.current.reconnectAttempts[peerId] = 0;
-        consecutiveFailures = 0; // Reset failure counter on success
-        break;
-      case "failed":
-        consecutiveFailures++;
-        if (consecutiveFailures >= 3) {
-          // Only disconnect after multiple consecutive failures
-          handlePeerDisconnect(peerId);
-        } else {
-          // Try restarting ICE negotiation first
+        if (peerData.peers[peerId]) {
+          // Don't close existing connection immediately - try to renegotiate first
           try {
-            console.log(`Attempting ICE restart for peer ${peerId}`);
-            peer.restartIce();
-          } catch (error) {
-            console.error(`Error during ICE restart for peer ${peerId}:`, error);
-            handlePeerDisconnect(peerId);
-          }
-        }
-        break;
-      case "disconnected":
-        // Wait a moment before taking action on disconnected state
-        // as it might recover automatically
-        setTimeout(() => {
-          if (peer.iceConnectionState === "disconnected") {
-            console.log(`Peer ${peerId} still disconnected after delay, attempting restart`);
-            try {
+            // Only restart ICE instead of closing the connection entirely
+            if (peer?.restartIce) {
+              console.log(`Restarting ICE for peer ${peerId}`);
               peer.restartIce();
-            } catch (error) {
-              console.error(`Error during ICE restart for peer ${peerId}:`, error);
-              handlePeerDisconnect(peerId);
+
+              // Try creating a new offer after ICE restart
+              return setTimeout(() => {
+                if (
+                  peerData.peers[peerId] &&
+                  peerData.peers[peerId].signalingState === "stable"
+                ) {
+                  createOffer(peerId, peerData.peers[peerId]);
+                }
+              }, 1000);
             }
+          } catch (error) {
+            console.error(`Error restarting ICE for peer ${peerId}:`, error);
           }
-        }, 5000);
-        break;
-      case "closed":
-        handlePeerDisconnect(peerId);
-        break;
-    }
-  };
 
-  peer.onconnectionstatechange = () => {
-    console.log(`Connection state for ${peerId}: ${peer.connectionState}`);
+          // If ICE restart fails or isn't available, then close and recreate
+          peerData.peers[peerId].close();
+          delete peerData.peers[peerId];
+        }
 
-    if (peer.connectionState === "failed") {
-      handlePeerDisconnect(peerId);
-    }
-  };
+        relay(peerId, "reconnect-request", { timestamp: Date.now() });
+      } else {
+        console.error(`Max reconnection attempts reached for peer ${peerId}`);
+      }
+    },
+    [relay, updatePeerConnectionState, createOffer]
+  );
 
-  // Modify this to be more tolerant of individual ICE candidate errors
-  peer.onicecandidateerror = (error) => {
-    console.error(`Peer connection error for ${peerId}:`, error);
-    // Don't immediately disconnect on ICE candidate errors
-    // Let the iceconnectionstatechange handler manage this
-  };
-}, [handlePeerDisconnect, updatePeerConnectionState]);
+  const setupPeerConnectionListeners = useCallback(
+    (peer: RTCPeerConnection, peerId: string) => {
+      // Add temporary state to track consecutive failures
+      let consecutiveFailures = 0;
 
-  const setupDataChannelListeners = useCallback((channel: RTCDataChannel, peerId: string) => {
-    channel.onopen = () => {
-      console.log(`Data channel for ${peerId} opened`);
-      updatePeerConnectionState(peerId, ConnectionState.CONNECTED);
+      peer.oniceconnectionstatechange = () => {
+        console.log(
+          `ICE connection state for ${peerId}: ${peer.iceConnectionState}`
+        );
 
-      channel.send(JSON.stringify({ event: "ping", timestamp: Date.now() }));
-    };
+        switch (peer.iceConnectionState) {
+          case "connected":
+          case "completed":
+            if (iceTimeoutsRef.current[peerId]) {
+              clearTimeout(iceTimeoutsRef.current[peerId]);
+              delete iceTimeoutsRef.current[peerId];
+            }
+            updatePeerConnectionState(peerId, ConnectionState.CONNECTED);
+            userPeerData.current.reconnectAttempts[peerId] = 0;
+            consecutiveFailures = 0; // Reset failure counter on success
+            break;
+          case "failed":
+            consecutiveFailures++;
+            if (consecutiveFailures >= 3) {
+              // Only disconnect after multiple consecutive failures
+              handlePeerDisconnect(peerId);
+            } else {
+              // Try restarting ICE negotiation first
+              try {
+                console.log(`Attempting ICE restart for peer ${peerId}`);
+                peer.restartIce();
+              } catch (error) {
+                console.error(
+                  `Error during ICE restart for peer ${peerId}:`,
+                  error
+                );
+                handlePeerDisconnect(peerId);
+              }
+            }
+            break;
+          case "disconnected":
+            // Wait a moment before taking action on disconnected state
+            // as it might recover automatically
+            setTimeout(() => {
+              if (peer.iceConnectionState === "disconnected") {
+                console.log(
+                  `Peer ${peerId} still disconnected after delay, attempting restart`
+                );
+                try {
+                  peer.restartIce();
+                } catch (error) {
+                  console.error(
+                    `Error during ICE restart for peer ${peerId}:`,
+                    error
+                  );
+                  handlePeerDisconnect(peerId);
+                }
+              }
+            }, 5000);
+            break;
+          case "closed":
+            handlePeerDisconnect(peerId);
+            break;
+        }
+      };
 
-    channel.onclose = () => {
-      console.log(`Data channel for ${peerId} closed`);
-      updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-    };
+      peer.onconnectionstatechange = () => {
+        console.log(`Connection state for ${peerId}: ${peer.connectionState}`);
 
-    channel.onerror = (error) => {
-      console.error(`Data channel error for ${peerId}:`, error);
-      updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-    };
-  }, [updatePeerConnectionState]);
+        if (peer.connectionState === "failed") {
+          handlePeerDisconnect(peerId);
+        }
+      };
+
+      // Modify this to be more tolerant of individual ICE candidate errors
+      peer.onicecandidateerror = (error) => {
+        console.error(`Peer connection error for ${peerId}:`, error);
+        // Don't immediately disconnect on ICE candidate errors
+        // Let the iceconnectionstatechange handler manage this
+      };
+    },
+    [handlePeerDisconnect, updatePeerConnectionState]
+  );
+
+  const setupDataChannelListeners = useCallback(
+    (channel: RTCDataChannel, peerId: string) => {
+      channel.onopen = () => {
+        console.log(`Data channel for ${peerId} opened`);
+        updatePeerConnectionState(peerId, ConnectionState.CONNECTED);
+
+        channel.send(JSON.stringify({ event: "ping", timestamp: Date.now() }));
+      };
+
+      channel.onclose = () => {
+        console.log(`Data channel for ${peerId} closed`);
+        updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
+      };
+
+      channel.onerror = (error) => {
+        console.error(`Data channel error for ${peerId}:`, error);
+        updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
+      };
+    },
+    [updatePeerConnectionState]
+  );
 
   const addPeer = useCallback(
     async (data: any) => {
       try {
         const message = JSON.parse(data.data);
-        if (userPeerData.current.peers[message.peer.id]) {
-          return;
-        }
-
+        userPeerData.current.peers[message.peer.id]?.close();
+        // if (userPeerData.current.peers[message.peer.id]) {
+        //   return;
+        // }
+        console.log(`ADD PEER FOR: ${message.peer.id}`);
         const userPeerDataValue = userPeerData.current;
 
         const peer = new RTCPeerConnection(rtcConfig);
         userPeerDataValue.peers[message.peer.id] = peer;
-        userPeerDataValue.connectionState[message.peer.id] = ConnectionState.CONNECTING;
+        userPeerDataValue.connectionState[message.peer.id] =
+          ConnectionState.CONNECTING;
 
         setupPeerConnectionListeners(peer, message.peer.id);
 
@@ -444,6 +476,7 @@ const Drawer: React.FC = () => {
           peer.onnegotiationneeded = async () => {
             await createOffer(message.peer.id, peer);
           };
+          console.log(`CREATE DATA CHANNEL WITH ${message.peer.id}`);
           const channel = peer.createDataChannel("updates", {
             ordered: true,
           });
@@ -470,7 +503,13 @@ const Drawer: React.FC = () => {
         console.error("Error adding peer:", error);
       }
     },
-    [createOffer, onPeerData, relay, setupDataChannelListeners, setupPeerConnectionListeners]
+    [
+      createOffer,
+      onPeerData,
+      relay,
+      setupDataChannelListeners,
+      setupPeerConnectionListeners,
+    ]
   );
 
   const removePeer = useCallback((data: any) => {
@@ -509,10 +548,13 @@ const Drawer: React.FC = () => {
 
         // If peer doesn't exist, recreate it as part of recovery
         if (!peer) {
-          console.log(`Recreating peer for ID: ${message.peer.id} during session description handling`);
+          console.log(
+            `Recreating peer for ID: ${message.peer.id} during session description handling`
+          );
           peer = new RTCPeerConnection(rtcConfig);
           userPeerData.current.peers[message.peer.id] = peer;
-          userPeerData.current.connectionState[message.peer.id] = ConnectionState.CONNECTING;
+          userPeerData.current.connectionState[message.peer.id] =
+            ConnectionState.CONNECTING;
 
           setupPeerConnectionListeners(peer, message.peer.id);
 
@@ -570,7 +612,10 @@ const Drawer: React.FC = () => {
           try {
             const message = JSON.parse(data.data);
             if (message.peer && message.peer.id) {
-              updatePeerConnectionState(message.peer.id, ConnectionState.DISCONNECTED);
+              updatePeerConnectionState(
+                message.peer.id,
+                ConnectionState.DISCONNECTED
+              );
             }
           } catch (e) {
             console.error("Error parsing peer data during error handling:", e);
@@ -578,24 +623,34 @@ const Drawer: React.FC = () => {
         }
       }
     },
-    [relay, updatePeerConnectionState, setupPeerConnectionListeners, setupDataChannelListeners, onPeerData]
+    [
+      relay,
+      updatePeerConnectionState,
+      setupPeerConnectionListeners,
+      setupDataChannelListeners,
+      onPeerData,
+    ]
   );
 
   const iceCandidate = useCallback(async (event: any) => {
     try {
       const message = JSON.parse(event.data);
-      const peer: RTCPeerConnection = userPeerData.current.peers[message.peer.id];
+      const peer: RTCPeerConnection =
+        userPeerData.current.peers[message.peer.id];
 
       if (!peer) {
-        console.error(`No peer found for ID: ${message.peer.id} during ICE candidate handling - will be recreated on next session description`);
-        return;
+        return console.error(
+          `No peer found for ID: ${message.peer.id} during ICE candidate handling - will be recreated on next session description`
+        );
       }
 
       const iceCandidateInit = new RTCIceCandidate(message.data);
       console.log("Adding ICE candidate for peer:", message.peer.id);
 
-      await peer.addIceCandidate(iceCandidateInit).catch(err => {
-        console.warn(`Non-critical error adding ICE candidate: ${err.message} - this can be normal during connection setup`);
+      await peer.addIceCandidate(iceCandidateInit).catch((err) => {
+        console.warn(
+          `Non-critical error adding ICE candidate: ${err.message} - this can be normal during connection setup`
+        );
       });
     } catch (error) {
       console.error("Error handling ICE candidate:", error);
@@ -605,6 +660,7 @@ const Drawer: React.FC = () => {
   const handleJoin = useCallback(
     async (event: any) => {
       try {
+        console.log("USER ID: ", JSON.parse(event.data).user.id);
         setUserData(JSON.parse(event.data).user);
         await join();
       } catch (error) {
@@ -639,10 +695,13 @@ const Drawer: React.FC = () => {
       });
   }, [eventDataRef, setEventData]);
 
-  const handleEventSourceError = useCallback((error: any) => {
-    console.error("EventSource error:", error);
-    scheduleReconnect();
-  }, [scheduleReconnect]);
+  const handleEventSourceError = useCallback(
+    (error: any) => {
+      console.error("EventSource error:", error);
+      scheduleReconnect();
+    },
+    [scheduleReconnect]
+  );
 
   const setupEventSource = useCallback(() => {
     if (token && id) {
@@ -683,7 +742,7 @@ const Drawer: React.FC = () => {
     handleJoin,
     handleCompleteJoin,
     handleFinishRound,
-    handleEventSourceError
+    handleEventSourceError,
   ]);
 
   useEffect(() => {
@@ -696,20 +755,27 @@ const Drawer: React.FC = () => {
       }
 
       const peerIds = Object.keys(userPeerData.current.peers);
-      if (peerIds.length > 0) {
-        peerIds.forEach(peerId => {
-          const peer = userPeerData.current.peers[peerId];
-          const channel = userPeerData.current.channels[peerId];
 
-          if (peer && (peer.iceConnectionState === "disconnected" || peer.iceConnectionState === "failed" || peer.iceConnectionState === "closed")) {
-            handlePeerDisconnect(peerId);
-          }
+      peerIds.forEach((peerId) => {
+        const peer = userPeerData.current.peers[peerId];
+        const channel = userPeerData.current.channels[peerId];
+        console.log("PEER ICE CONNECTION STATE: ", peer?.iceConnectionState);
+        console.log(
+          "CHANNEL READY STATE: ",
+          channel?.readyState,
+          userPeerData.current.channels,
+          peerId
+        );
+        (peer?.iceConnectionState === "disconnected" ||
+          peer?.iceConnectionState === "failed" ||
+          peer?.iceConnectionState === "closed") &&
+          handlePeerDisconnect(peerId);
 
-          if (channel && channel.readyState === "open") {
-            channel.send(JSON.stringify({ event: "heartbeat", timestamp: Date.now() }));
-          }
-        });
-      }
+        channel?.readyState === "open" &&
+          channel.send(
+            JSON.stringify({ event: "heartbeat", timestamp: Date.now() })
+          );
+      });
     }, 10000);
 
     return () => {
@@ -719,7 +785,7 @@ const Drawer: React.FC = () => {
         clearTimeout(reconnectTimeoutRef.current);
       }
 
-      Object.values(iceTimeoutsRef.current).forEach(timeout => {
+      Object.values(iceTimeoutsRef.current).forEach((timeout) => {
         clearTimeout(timeout);
       });
 
@@ -729,13 +795,19 @@ const Drawer: React.FC = () => {
 
       clearAllPeers();
 
-      if (cleanup) cleanup();
+      cleanup?.();
     };
-  }, [setupEventSource, clearAllPeers, handlePeerDisconnect, scheduleReconnect]);
+  }, [
+    setupEventSource,
+    clearAllPeers,
+    handlePeerDisconnect,
+    scheduleReconnect,
+  ]);
 
   const broadcast = useCallback(
     (data: string) => {
       const channels = userPeerData.current.channels;
+      console.log(channels);
       for (const peerId in channels) {
         if (channels[peerId].readyState === "open") {
           try {
@@ -744,7 +816,10 @@ const Drawer: React.FC = () => {
             console.error(`Error broadcasting to peer ${peerId}:`, error);
             updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
           }
-        } else if (channels[peerId].readyState === "closed" || channels[peerId].readyState === "closing") {
+        } else if (
+          channels[peerId].readyState === "closed" ||
+          channels[peerId].readyState === "closing"
+        ) {
           updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
         }
       }
@@ -757,7 +832,7 @@ const Drawer: React.FC = () => {
             Authorization: `Bearer ${token}`,
           },
           body: data,
-        }).catch(error => {
+        }).catch((error) => {
           console.error("Error updating event on server:", error);
         });
       } catch (error) {

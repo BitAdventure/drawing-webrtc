@@ -10,3 +10,8 @@ export enum RoundStatuses {
   SHOW_RESULT = "show_result",
   COMPLETED = "completed",
 }
+
+export enum ClientStatuses {
+  CONNECTED = "connected",
+  DISCONNECTED = "disconnected",
+}

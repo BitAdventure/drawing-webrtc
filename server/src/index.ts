@@ -7,8 +7,9 @@ import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { initializeRedisClient, redisOptions } from "./redisClient.js";
 import cors from "cors";
-import { RoundStatuses } from "./enums.js";
+import { RoundStatuses, ClientStatuses } from "./enums.js";
 import { Job, Queue, Worker } from "bullmq";
+import { EventData, TimersMap } from "./types.js";
 
 const DRAW_TIME = 75;
 const RECONNECT_GRACE_PERIOD = 30000;
@@ -27,16 +28,21 @@ app.use(express.static(path.join(__dirname, "static")));
 
 const server = http.createServer(app);
 const clients: any = {};
-const serverState: any = {};
-const timers: any = {};
-const clientIntervals: { [key: string]: NodeJS.Timeout } = {};
-const disconnectionTimers: { [key: string]: NodeJS.Timeout } = {};
-const pendingIceCandidates: { [key: string]: any[] } = {};
+const serverState: {
+  [key: string]: EventData;
+} = {};
+const timers: TimersMap = {};
+const clientIntervals: TimersMap = {};
+const disconnectionTimers: TimersMap = {};
+const pendingIceCandidates: { [key: string]: Array<any> } = {};
 
 const redisClient = await initializeRedisClient();
 const pubSubRedisClient = await initializeRedisClient();
 
-async function updatePeerPresence(clientId: string, isActive: boolean = true): Promise<void> {
+async function updatePeerPresence(
+  clientId: string,
+  isActive: boolean = true
+): Promise<void> {
   try {
     const key = `peer:presence:${clientId}`;
     if (isActive) {
@@ -63,23 +69,16 @@ async function isPeerAvailable(peerId: string): Promise<boolean> {
   }
 }
 
-async function markClientDisconnected(client: any): Promise<void> {
+async function markClientStatus(
+  client: any,
+  status: ClientStatuses
+): Promise<void> {
   try {
     const key = `client:status:${client.id}`;
-    await redisClient.set(key, "disconnected");
-    await updatePeerPresence(client.id, false);
+    await redisClient.set(key, status);
+    await updatePeerPresence(client.id, status === ClientStatuses.CONNECTED);
   } catch (error: any) {
-    console.error(`Error marking client as disconnected: ${error.message}`);
-  }
-}
-
-async function markClientConnected(client: any): Promise<void> {
-  try {
-    const key = `client:status:${client.id}`;
-    await redisClient.set(key, "connected");
-    await updatePeerPresence(client.id, true);
-  } catch (error: any) {
-    console.error(`Error marking client as connected: ${error.message}`);
+    console.error(`Error marking client as ${status}: ${error.message}`);
   }
 }
 
@@ -115,7 +114,7 @@ async function getPendingIceCandidates(peerId: string): Promise<any[]> {
     const candidates = await redisClient.lRange(key, 0, -1);
     await redisClient.del(key);
 
-    return candidates.map(candidate => JSON.parse(candidate));
+    return candidates.map((candidate) => JSON.parse(candidate));
   } catch (error: any) {
     console.error(`Error getting pending ICE candidates: ${error.message}`);
     return [];
@@ -134,10 +133,12 @@ async function disconnected(client: any): Promise<void> {
     clearTimeout(disconnectionTimers[client.id]);
   }
 
-  await markClientDisconnected(client);
+  await markClientStatus(client, ClientStatuses.DISCONNECTED);
 
   disconnectionTimers[client.id] = setTimeout(async () => {
-    console.log(`Grace period ended for client ${client.id} - cleaning up resources`);
+    console.log(
+      `Grace period ended for client ${client.id} - cleaning up resources`
+    );
 
     delete clients[client.id];
     delete disconnectionTimers[client.id];
@@ -163,7 +164,7 @@ async function disconnected(client: any): Promise<void> {
 
           await Promise.all(
             peerIds.map(async (peerId: string) => {
-              if (peerId !== client.id && await isPeerAvailable(peerId)) {
+              if (peerId !== client.id && (await isPeerAvailable(peerId))) {
                 await redisClient.publish(`messages:${peerId}`, msg);
               }
             })
@@ -248,7 +249,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
   }
 
   clients[client.id] = client;
-  await markClientConnected(client);
+  await markClientStatus(client, ClientStatuses.CONNECTED);
 
   client.redis.subscribe(
     [`messages:${client.id}`, `messages:${eventId}`],
@@ -307,7 +308,7 @@ const processJoin = async (job: Job): Promise<any> => {
     );
 
     for (const peerId of peerIds) {
-      if (await isPeerAvailable(peerId)) {
+      if (user.id !== peerId && (await isPeerAvailable(peerId))) {
         await redisClient.publish(
           `messages:${peerId}`,
           JSON.stringify({
@@ -343,7 +344,7 @@ const processJoin = async (job: Job): Promise<any> => {
           `messages:${user.id}`,
           JSON.stringify({
             event: "ice-candidate",
-            data: candidateData
+            data: candidateData,
           })
         );
       }
@@ -360,17 +361,13 @@ const workers: { [key: string]: Worker } = {};
 
 function getOrCreateWorker(eventId: string): Worker {
   if (!workers[eventId]) {
-    workers[eventId] = new Worker(
-      eventId,
-      processJoin,
-      {
-        connection: redisOptions,
-        limiter: {
-          max: 1,
-          duration: 1000,
-        },
-      }
-    );
+    workers[eventId] = new Worker(eventId, processJoin, {
+      connection: redisOptions,
+      limiter: {
+        max: 1,
+        duration: 1000,
+      },
+    });
 
     workers[eventId].on("completed", (job: Job) => {
       console.log(
@@ -379,10 +376,7 @@ function getOrCreateWorker(eventId: string): Worker {
 
       const clientId = job.data.user.id;
       if (clients[clientId]) {
-        clients[clientId].emit(
-          "join-completed",
-          serverState[job.data.eventId]
-        );
+        clients[clientId].emit("join-completed", serverState[job.data.eventId]);
       }
     });
 
@@ -413,9 +407,9 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
         removeOnFail: 1000,
         attempts: 3,
         backoff: {
-          type: 'exponential',
-          delay: 1000
-        }
+          type: "exponential",
+          delay: 1000,
+        },
       }
     );
 
@@ -431,11 +425,11 @@ app.post("/relay/:peerId/:event", auth, async (req: any, res: any) => {
     const peerId = req.params.peerId;
     const event = req.params.event;
 
-    if (!await isPeerAvailable(peerId)) {
+    if (!(await isPeerAvailable(peerId))) {
       if (event === "ice-candidate") {
         await storeIceCandidate(peerId, {
           peer: req.user,
-          data: req.body
+          data: req.body,
         });
         return res.sendStatus(200);
       }
@@ -475,7 +469,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
             word: null,
             drawerId: req.user.id,
             lines: [],
-          }
+          },
         };
 
         serverState[eventId].roundInfo = {
@@ -488,9 +482,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
           },
         };
 
-        if (timers[eventId]) {
-          clearTimeout(timers[eventId]);
-        }
+        timers[eventId] && clearTimeout(timers[eventId]);
 
         timers[eventId] = setTimeout(
           async () => {
@@ -502,7 +494,10 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
                 data: { eventId },
               };
 
-              await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
+              await redisClient.publish(
+                `messages:${eventId}`,
+                JSON.stringify(msg)
+              );
 
               delete timers[eventId];
               delete serverState[eventId];
@@ -531,16 +526,22 @@ app.get("/reconnect", auth, async (req: any, res: any) => {
       return res.status(400).json({ error: "Event ID is required" });
     }
 
-    const isInEvent = await redisClient.sIsMember(`${req.user.id}:channels`, eventId);
+    const isInEvent = await redisClient.sIsMember(
+      `${req.user.id}:channels`,
+      eventId
+    );
     if (!isInEvent) {
       return res.status(404).json({ error: "User not in event" });
     }
 
-    await markClientConnected({ id: req.user.id, user: req.user });
+    await markClientStatus(
+      { id: req.user.id, user: req.user },
+      ClientStatuses.CONNECTED
+    );
 
     return res.status(200).json({
       success: true,
-      state: serverState[eventId] || null
+      state: serverState[eventId] || null,
     });
   } catch (error: any) {
     console.error(`Error during reconnection: ${error.message}`);
@@ -548,15 +549,15 @@ app.get("/reconnect", auth, async (req: any, res: any) => {
   }
 });
 
-app.get("*", (req, res) => {
+app.get("*", (_, res) => {
   res.sendFile(path.join(__dirname, "static", "index.html"));
 });
 
-process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup);
+process.on("SIGTERM", cleanup);
+process.on("SIGINT", cleanup);
 
 async function cleanup(): Promise<void> {
-  console.log('Cleaning up resources before shutdown...');
+  console.log("Cleaning up resources before shutdown...");
 
   try {
     for (const intervalId of Object.values(clientIntervals)) {
@@ -568,7 +569,7 @@ async function cleanup(): Promise<void> {
     }
 
     for (const timerId of Object.values(timers)) {
-      clearTimeout(timerId as number);
+      clearTimeout(timerId);
     }
 
     for (const worker of Object.values(workers)) {
@@ -579,11 +580,11 @@ async function cleanup(): Promise<void> {
     await pubSubRedisClient.quit();
 
     server.close(() => {
-      console.log('Server closed successfully');
+      console.log("Server closed successfully");
       process.exit(0);
     });
   } catch (err: any) {
-    console.error('Error during cleanup:', err);
+    console.error("Error during cleanup:", err);
     process.exit(1);
   }
 }
