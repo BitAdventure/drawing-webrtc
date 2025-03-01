@@ -1,127 +1,52 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ConnectionState, RoundStatuses } from "../constants/enums";
-import {
-  HEARTBEAT_INTERVAL,
-  ICE_GATHERING_TIMEOUT,
-  MAX_RECONNECT_ATTEMPTS,
-  RECONNECT_TIMEOUT,
-  RECREATE_OFFER_TIMEOUT,
-  RTC_CONFIG,
-  ServerURL,
-} from "../constants/constants";
-import { useParams } from "react-router-dom";
+import { useCallback, useRef } from "react";
 import useStateRef from "react-usestateref";
-import { EventData, UserPeerData } from "../constants/types";
-import useMountEffect from "./useMountEffect";
+import { WebRTCService } from "../services/webrtc";
+import { ConnectionState, RoundStatuses } from "../constants/enums";
+import { ICE_GATHERING_TIMEOUT, RTC_CONFIG } from "../constants/constants";
+import { EventData, RelayFunction, UserPeerData } from "../constants/types";
 
-const useWebRTC = () => {
-  const { id } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string>("");
+interface UseWebRTCParams {
+  token: string;
+  eventId: string | undefined;
+  relay: RelayFunction;
+}
+
+interface UseWebRTCReturn {
+  userPeerData: React.RefObject<UserPeerData>;
+  webRTCService: WebRTCService | null;
+  eventData: EventData | null;
+  setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
+  addPeer: (data: any) => Promise<void>;
+  removePeer: (data: any) => void;
+  sessionDescription: (data: any) => Promise<void>;
+  iceCandidate: (data: any) => Promise<void>;
+  updatePeerConnectionState: (peerId: string, state: ConnectionState) => void;
+  handlePeerDisconnect: (peerId: string) => void;
+  clearAllPeers: () => void;
+}
+
+export const useWebRTC = ({
+  token,
+  eventId,
+  relay,
+}: UseWebRTCParams): UseWebRTCReturn => {
+  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(
+    null
+  );
+
   const userPeerData = useRef<UserPeerData>({
     peers: {},
     channels: {},
     connectionState: {},
     reconnectAttempts: {},
   });
-  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(
-    null
-  );
-  const [userData, setUserData] = useState<any>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<number | null>(null);
+
   const iceTimeoutsRef = useRef<{ [key: string]: number }>({});
 
-  const getToken = useCallback(async () => {
-    let actualToken: string = localStorage.getItem("jwtToken") || "";
-    if (!actualToken) {
-      try {
-        const res = await fetch(`${ServerURL}/access`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: "user" + Math.floor(Math.random() * 100000),
-          }),
-        });
+  // Service reference
+  const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
-        if (!res.ok) {
-          throw new Error("Failed to get access token");
-        }
-
-        const { token } = await res.json();
-        localStorage.setItem("jwtToken", token);
-        actualToken = token;
-      } catch (error) {
-        console.error("Error getting token:", error);
-        return;
-      }
-    }
-
-    setToken(actualToken);
-  }, []);
-
-  useMountEffect(() => {
-    getToken();
-  });
-
-  const join = useCallback(async () => {
-    try {
-      const response = await fetch(`${ServerURL}/${id}/join`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to join session");
-      }
-    } catch (error) {
-      console.error("Error joining session:", error);
-      scheduleReconnect();
-    }
-    // eslint-disable-next-line
-  }, [id, token]);
-
-  const scheduleReconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      reconnectToEventSource();
-    }, RECONNECT_TIMEOUT);
-    // eslint-disable-next-line
-  }, []);
-
-  const reconnectToEventSource = useCallback(() => {
-    eventSourceRef.current && eventSourceRef.current.close();
-
-    setupEventSource();
-
-    token && join();
-    // eslint-disable-next-line
-  }, [join, token]);
-
-  const clearAllPeers = useCallback(() => {
-    Object.values(userPeerData.current.peers).forEach((peer) => {
-      peer.close();
-    });
-
-    userPeerData.current.peers = {};
-    userPeerData.current.channels = {};
-    userPeerData.current.connectionState = {};
-    userPeerData.current.reconnectAttempts = {};
-
-    Object.values(iceTimeoutsRef.current).forEach((timeout) => {
-      clearTimeout(timeout);
-    });
-    iceTimeoutsRef.current = {};
-  }, []);
-
+  // Update connection state
   const updatePeerConnectionState = useCallback(
     (peerId: string, state: ConnectionState) => {
       userPeerData.current.connectionState[peerId] = state;
@@ -129,29 +54,7 @@ const useWebRTC = () => {
     []
   );
 
-  const relay = useCallback(
-    async (peerId: any, event: any, data: any) => {
-      try {
-        const response = await fetch(`${ServerURL}/relay/${peerId}/${event}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(data),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to relay ${event} to peer ${peerId}`);
-        }
-      } catch (error) {
-        console.error("Relay error:", error);
-        updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-      }
-    },
-    [token, updatePeerConnectionState]
-  );
-
+  // Handle peer data
   const onPeerData = useCallback(
     (peerId: string, data: any) => {
       try {
@@ -196,6 +99,7 @@ const useWebRTC = () => {
     [eventDataRef, setEventData]
   );
 
+  // Create offer
   const createOffer = useCallback(
     async (peerId: string, peer: RTCPeerConnection) => {
       try {
@@ -226,6 +130,7 @@ const useWebRTC = () => {
     [relay, updatePeerConnectionState]
   );
 
+  // Handle peer disconnect
   const handlePeerDisconnect = useCallback(
     (peerId: string) => {
       const peerData = userPeerData.current;
@@ -249,7 +154,7 @@ const useWebRTC = () => {
 
       peerData.reconnectAttempts[peerId]++;
 
-      if (peerData.reconnectAttempts[peerId] <= MAX_RECONNECT_ATTEMPTS) {
+      if (peerData.reconnectAttempts[peerId] <= 3) {
         console.log(
           `Attempting to reconnect to peer ${peerId}, attempt ${peerData.reconnectAttempts[peerId]}`
         );
@@ -270,7 +175,7 @@ const useWebRTC = () => {
                 ) {
                   createOffer(peerId, peerData.peers[peerId]);
                 }
-              }, RECREATE_OFFER_TIMEOUT);
+              }, 1000);
             }
           } catch (error) {
             console.error(`Error restarting ICE for peer ${peerId}:`, error);
@@ -289,6 +194,7 @@ const useWebRTC = () => {
     [relay, updatePeerConnectionState, createOffer]
   );
 
+  // Setup peer connection listeners
   const setupPeerConnectionListeners = useCallback(
     (peer: RTCPeerConnection, peerId: string) => {
       // Add temporary state to track consecutive failures
@@ -347,7 +253,7 @@ const useWebRTC = () => {
                   handlePeerDisconnect(peerId);
                 }
               }
-            }, RECONNECT_TIMEOUT);
+            }, 5000);
             break;
           case "closed":
             handlePeerDisconnect(peerId);
@@ -373,6 +279,7 @@ const useWebRTC = () => {
     [handlePeerDisconnect, updatePeerConnectionState]
   );
 
+  // Setup data channel listeners
   const setupDataChannelListeners = useCallback(
     (channel: RTCDataChannel, peerId: string) => {
       channel.onopen = () => {
@@ -395,435 +302,96 @@ const useWebRTC = () => {
     [updatePeerConnectionState]
   );
 
-  const addPeer = useCallback(
-    async (data: any) => {
-      try {
-        const message = JSON.parse(data.data);
-        userPeerData.current.peers[message.peer.id]?.close();
-        // if (userPeerData.current.peers[message.peer.id]) {
-        //   return;
-        // }
-        console.log(`ADD PEER FOR: ${message.peer.id}`);
-        const userPeerDataValue = userPeerData.current;
-
-        const peer = new RTCPeerConnection(RTC_CONFIG);
-        userPeerDataValue.peers[message.peer.id] = peer;
-        userPeerDataValue.connectionState[message.peer.id] =
-          ConnectionState.CONNECTING;
-
-        setupPeerConnectionListeners(peer, message.peer.id);
-
-        peer.onicecandidate = async function (event) {
-          console.log("ICE candidate event:", event, new Date().getTime());
-          event.candidate &&
-            relay(message.peer.id, "ice-candidate", event.candidate);
-        };
-
-        if (message.offer) {
-          peer.onnegotiationneeded = async () => {
-            await createOffer(message.peer.id, peer);
-          };
-          console.log(`CREATE DATA CHANNEL WITH ${message.peer.id}`);
-          const channel = peer.createDataChannel("updates", {
-            ordered: true,
-          });
-
-          setupDataChannelListeners(channel, message.peer.id);
-
-          channel.onmessage = function (event) {
-            onPeerData(message.peer.id, event.data);
-          };
-          userPeerDataValue.channels[message.peer.id] = channel;
-        } else {
-          peer.ondatachannel = function (event) {
-            console.log("PEER.ONDATACHANNEL: ", event, new Date().getTime());
-            userPeerDataValue.channels[message.peer.id] = event.channel;
-
-            setupDataChannelListeners(event.channel, message.peer.id);
-
-            event.channel.onmessage = function (evt) {
-              onPeerData(message.peer.id, evt.data);
-            };
-          };
-        }
-      } catch (error) {
-        console.error("Error adding peer:", error);
-      }
-    },
-    [
-      createOffer,
-      onPeerData,
+  // Initialize WebRTC service
+  if (!webRTCServiceRef.current && token && eventId) {
+    webRTCServiceRef.current = new WebRTCService(
+      userPeerData,
+      iceTimeoutsRef,
+      RTC_CONFIG,
       relay,
-      setupDataChannelListeners,
-      setupPeerConnectionListeners,
-    ]
-  );
+      {
+        onPeerData,
+        updatePeerConnectionState,
+        createOffer,
+        handlePeerDisconnect,
+        setupPeerConnectionListeners,
+        setupDataChannelListeners,
+      }
+    );
+  }
 
+  // Add peer
+  const addPeer = useCallback(async (data: any) => {
+    try {
+      const message = JSON.parse(data.data);
+      if (webRTCServiceRef.current) {
+        webRTCServiceRef.current.createPeer(message.peer.id, message.offer);
+      }
+    } catch (error) {
+      console.error("Error adding peer:", error);
+    }
+  }, []);
+
+  // Remove peer
   const removePeer = useCallback((data: any) => {
     try {
       const message = JSON.parse(data.data);
-      const userPeers = userPeerData.current.peers;
-      const channels = userPeerData.current.channels;
-
-      if (channels[message.peer.id]) {
-        channels[message.peer.id].close();
-        delete channels[message.peer.id];
-      }
-
-      if (userPeers[message.peer.id]) {
-        userPeers[message.peer.id].close();
-        delete userPeers[message.peer.id];
-      }
-
-      delete userPeerData.current.connectionState[message.peer.id];
-      delete userPeerData.current.reconnectAttempts[message.peer.id];
-
-      if (iceTimeoutsRef.current[message.peer.id]) {
-        clearTimeout(iceTimeoutsRef.current[message.peer.id]);
-        delete iceTimeoutsRef.current[message.peer.id];
+      if (webRTCServiceRef.current) {
+        webRTCServiceRef.current.removePeer(message.peer.id);
       }
     } catch (error) {
       console.error("Error removing peer:", error);
     }
   }, []);
 
-  const sessionDescription = useCallback(
-    async (data: any) => {
-      try {
-        const message = JSON.parse(data.data);
-        let peer = userPeerData.current.peers[message.peer.id];
-
-        // If peer doesn't exist, recreate it as part of recovery
-        if (!peer) {
-          console.log(
-            `Recreating peer for ID: ${message.peer.id} during session description handling`
-          );
-          peer = new RTCPeerConnection(RTC_CONFIG);
-          userPeerData.current.peers[message.peer.id] = peer;
-          userPeerData.current.connectionState[message.peer.id] =
-            ConnectionState.CONNECTING;
-
-          setupPeerConnectionListeners(peer, message.peer.id);
-
-          peer.onicecandidate = async function (event) {
-            console.log("ICE candidate event:", event, new Date().getTime());
-            event.candidate &&
-              relay(message.peer.id, "ice-candidate", event.candidate);
-          };
-
-          // Setup ondatachannel for recreated peer
-          peer.ondatachannel = function (event) {
-            console.log("PEER.ONDATACHANNEL on recreated peer: ", event);
-            userPeerData.current.channels[message.peer.id] = event.channel;
-
-            setupDataChannelListeners(event.channel, message.peer.id);
-
-            event.channel.onmessage = function (evt) {
-              onPeerData(message.peer.id, evt.data);
-            };
-          };
-        }
-
-        const remoteDescription = new RTCSessionDescription(message.data);
-
-        if (
-          remoteDescription.type === "offer" &&
-          peer.signalingState !== "stable"
-        ) {
-          await Promise.all([
-            peer.setLocalDescription({ type: "rollback" }),
-            peer.setRemoteDescription(remoteDescription),
-          ]);
-        } else {
-          console.log(
-            "Setting remote description:",
-            remoteDescription,
-            new Date().getTime()
-          );
-          await peer.setRemoteDescription(remoteDescription);
-        }
-
-        if (remoteDescription.type === "offer") {
-          const answer = await peer.createAnswer();
-          await peer.setLocalDescription(answer);
-          console.log(
-            "Setting local description:",
-            peer.localDescription,
-            new Date().getTime()
-          );
-          await relay(message.peer.id, "session-description", answer);
-        }
-      } catch (error) {
-        console.error("Error handling session description:", error);
-        if (data && data.data) {
-          try {
-            const message = JSON.parse(data.data);
-            if (message.peer && message.peer.id) {
-              updatePeerConnectionState(
-                message.peer.id,
-                ConnectionState.DISCONNECTED
-              );
-            }
-          } catch (e) {
-            console.error("Error parsing peer data during error handling:", e);
-          }
-        }
+  // Session description
+  const sessionDescription = useCallback(async (data: any) => {
+    try {
+      const message = JSON.parse(data.data);
+      if (webRTCServiceRef.current) {
+        await webRTCServiceRef.current.handleSessionDescription(
+          message.peer.id,
+          message.data
+        );
       }
-    },
-    [
-      relay,
-      updatePeerConnectionState,
-      setupPeerConnectionListeners,
-      setupDataChannelListeners,
-      onPeerData,
-    ]
-  );
+    } catch (error) {
+      console.error("Error handling session description:", error);
+    }
+  }, []);
 
+  // ICE candidate
   const iceCandidate = useCallback(async (event: any) => {
     try {
       const message = JSON.parse(event.data);
-      const peer: RTCPeerConnection =
-        userPeerData.current.peers[message.peer.id];
-
-      if (!peer) {
-        return console.error(
-          `No peer found for ID: ${message.peer.id} during ICE candidate handling - will be recreated on next session description`
+      if (webRTCServiceRef.current) {
+        await webRTCServiceRef.current.addIceCandidate(
+          message.peer.id,
+          message.data
         );
       }
-
-      const iceCandidateInit = new RTCIceCandidate(message.data);
-      console.log("Adding ICE candidate for peer:", message.peer.id);
-
-      await peer.addIceCandidate(iceCandidateInit).catch((err) => {
-        console.warn(
-          `Non-critical error adding ICE candidate: ${err.message} - this can be normal during connection setup`
-        );
-      });
     } catch (error) {
       console.error("Error handling ICE candidate:", error);
     }
   }, []);
 
-  const handleJoin = useCallback(
-    async (event: any) => {
-      try {
-        console.log("USER ID: ", JSON.parse(event.data).user.id);
-        setUserData(JSON.parse(event.data).user);
-        await join();
-      } catch (error) {
-        console.error("Error handling join:", error);
-        scheduleReconnect();
-      }
-    },
-    [join, scheduleReconnect]
-  );
-
-  const handleCompleteJoin = useCallback(
-    async (event: any) => {
-      try {
-        setEventData(JSON.parse(event.data));
-        setLoading(false);
-      } catch (error) {
-        console.error("Error completing join:", error);
-        scheduleReconnect();
-      }
-    },
-    [scheduleReconnect, setEventData]
-  );
-
-  const handleFinishRound = useCallback(() => {
-    eventDataRef.current &&
-      setEventData({
-        ...eventDataRef.current,
-        roundInfo: {
-          ...eventDataRef.current.roundInfo,
-          status: RoundStatuses.SHOW_RESULT,
-        },
-      });
-  }, [eventDataRef, setEventData]);
-
-  const handleEventSourceError = useCallback(
-    (error: any) => {
-      console.error("EventSource error:", error);
-      scheduleReconnect();
-    },
-    [scheduleReconnect]
-  );
-
-  const setupEventSource = useCallback(() => {
-    if (token && id) {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-
-      const eventSource = new EventSource(
-        `${ServerURL}/connect?token=${token}&eventId=${id}`
-      );
-      eventSourceRef.current = eventSource;
-
-      eventSource.addEventListener("add-peer", addPeer, false);
-      eventSource.addEventListener("remove-peer", removePeer, false);
-      eventSource.addEventListener(
-        "session-description",
-        sessionDescription,
-        false
-      );
-      eventSource.addEventListener("ice-candidate", iceCandidate, false);
-      eventSource.addEventListener("connected", handleJoin);
-      eventSource.addEventListener("join-completed", handleCompleteJoin);
-      eventSource.addEventListener("finish-round", handleFinishRound, false);
-
-      eventSource.onerror = handleEventSourceError;
-
-      return () => {
-        eventSource.close();
-      };
+  // Clear all peers
+  const clearAllPeers = useCallback(() => {
+    if (webRTCServiceRef.current) {
+      webRTCServiceRef.current.clearAllPeers();
     }
-  }, [
-    token,
-    id,
+  }, []);
+
+  return {
+    userPeerData,
+    webRTCService: webRTCServiceRef.current,
+    eventData,
+    setEventData,
     addPeer,
     removePeer,
     sessionDescription,
     iceCandidate,
-    handleJoin,
-    handleCompleteJoin,
-    handleFinishRound,
-    handleEventSourceError,
-  ]);
-
-  useEffect(() => {
-    const cleanup = setupEventSource();
-
-    const heartbeatInterval = setInterval(() => {
-      if (eventSourceRef.current && eventSourceRef.current.readyState === 2) {
-        console.warn("EventSource connection closed unexpectedly");
-        scheduleReconnect();
-      }
-
-      const peerIds = Object.keys(userPeerData.current.peers);
-
-      peerIds.forEach((peerId) => {
-        const peer = userPeerData.current.peers[peerId];
-        const channel = userPeerData.current.channels[peerId];
-        console.log("PEER ICE CONNECTION STATE: ", peer?.iceConnectionState);
-        console.log(
-          "CHANNEL READY STATE: ",
-          channel?.readyState,
-          userPeerData.current.channels,
-          peerId
-        );
-        (peer?.iceConnectionState === "disconnected" ||
-          peer?.iceConnectionState === "failed" ||
-          peer?.iceConnectionState === "closed") &&
-          handlePeerDisconnect(peerId);
-
-        channel?.readyState === "open" &&
-          channel.send(
-            JSON.stringify({ event: "heartbeat", timestamp: Date.now() })
-          );
-      });
-    }, HEARTBEAT_INTERVAL);
-
-    return () => {
-      clearInterval(heartbeatInterval);
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-
-      Object.values(iceTimeoutsRef.current).forEach((timeout) => {
-        clearTimeout(timeout);
-      });
-
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-
-      clearAllPeers();
-
-      cleanup?.();
-    };
-  }, [
-    setupEventSource,
-    clearAllPeers,
+    updatePeerConnectionState,
     handlePeerDisconnect,
-    scheduleReconnect,
-  ]);
-
-  const broadcast = useCallback(
-    (data: string) => {
-      const channels = userPeerData.current.channels;
-      console.log(channels);
-      for (const peerId in channels) {
-        if (channels[peerId].readyState === "open") {
-          try {
-            channels[peerId].send(data);
-          } catch (error) {
-            console.error(`Error broadcasting to peer ${peerId}:`, error);
-            updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-          }
-        } else if (
-          channels[peerId].readyState === "closed" ||
-          channels[peerId].readyState === "closing"
-        ) {
-          updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
-        }
-      }
-
-      try {
-        fetch(`${ServerURL}/updateEvent/${id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: data,
-        }).catch((error) => {
-          console.error("Error updating event on server:", error);
-        });
-      } catch (error) {
-        console.error("Error in broadcast:", error);
-      }
-    },
-    [id, token, updatePeerConnectionState]
-  );
-
-  const handleStartGame = useCallback(() => {
-    const data = {
-      word: {
-        label: "Example",
-        id: "example",
-      },
-      startTime: new Date().getTime(),
-      id,
-    };
-    setEventData(
-      (prev) =>
-        prev && {
-          ...prev,
-          roundInfo: {
-            ...prev.roundInfo,
-            startTime: data.startTime,
-            word: data.word,
-            status: RoundStatuses.ONGOING,
-          },
-        }
-    );
-    broadcast(
-      JSON.stringify({
-        event: "start-round",
-        data,
-      })
-    );
-  }, [broadcast, id, setEventData]);
-
-  const isDrawer = useMemo(
-    () => eventData?.roundInfo.drawerId === userData?.id,
-    [eventData?.roundInfo.drawerId, userData?.id]
-  );
-
-  return { loading, handleStartGame, isDrawer, eventData, broadcast };
+    clearAllPeers,
+  };
 };
-
-export default useWebRTC;

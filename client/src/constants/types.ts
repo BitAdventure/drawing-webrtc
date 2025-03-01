@@ -4,6 +4,12 @@ export type EventData = {
   id: string;
   roundInfo: RoundType;
 };
+
+export type UserData = {
+  id: string;
+  username: string;
+  // Add other user properties as needed
+};
 export type UserPeerData = {
   peers: { [key: string]: RTCPeerConnection };
   channels: { [key: string]: RTCDataChannel };
@@ -25,3 +31,39 @@ export type RoundType = {
 };
 
 export type ToolType = "pen" | "eraser";
+
+// connection.types.ts
+
+export interface ConnectionConfig {
+  reconnectTimeout: number;
+  iceGatheringTimeout: number;
+  maxReconnectAttempts: number;
+  rtcConfig: RTCConfiguration;
+}
+
+export interface EventSourceHandlers {
+  addPeer: (event: any) => void;
+  removePeer: (event: any) => void;
+  sessionDescription: (event: any) => void;
+  iceCandidate: (event: any) => void;
+  handleJoin: (event: any) => void;
+  handleCompleteJoin: (event: any) => void;
+  handleFinishRound: (event: any) => void;
+  handleEventSourceError: (error: any) => void;
+}
+
+export interface WebRTCHandlers {
+  onPeerData: (peerId: string, data: any) => void;
+  updatePeerConnectionState: (peerId: string, state: ConnectionState) => void;
+  createOffer: (peerId: string, peer: RTCPeerConnection) => Promise<void>;
+  handlePeerDisconnect: (peerId: string) => void;
+  setupPeerConnectionListeners: (
+    peer: RTCPeerConnection,
+    peerId: string
+  ) => void;
+  setupDataChannelListeners: (channel: RTCDataChannel, peerId: string) => void;
+}
+
+export interface RelayFunction {
+  (peerId: string, event: string, data: any): Promise<void>;
+}
