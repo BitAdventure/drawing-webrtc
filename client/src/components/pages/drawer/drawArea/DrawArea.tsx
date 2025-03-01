@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RoundType, ToolType } from "../Drawer";
 import { Layer, Line, Stage } from "react-konva";
 import ConfigurationPanel from "./canvas/configurationPanel/ConfigurationPanel";
 import { colors } from "../../../../constants/colors";
@@ -8,6 +7,7 @@ import useThrottle from "../../../../hooks/useThrottle";
 import { RoundStatuses } from "../../../../constants/enums";
 import Results from "./results/Results";
 import WordChoiceWaiting from "./wordChoiceWaiting/WordChoiceWaiting";
+import { RoundType, ToolType } from "../../../../constants/types";
 
 import styles from "./../style.module.css";
 

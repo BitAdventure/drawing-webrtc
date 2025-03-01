@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
-import { RoundType } from "../../Drawer";
+import { RoundType } from "../../../../../constants/types";
 
 import TimerIcon from "./../../../../../assets/icons/timer-icon.svg?react";
 

@@ -1,9 +1,9 @@
 import Round from "./round/Round";
 import Timer from "./timer/Timer";
-import { RoundType } from "../Drawer";
+import WordArea from "./wordArea/WordArea";
+import { RoundType } from "../../../../constants/types";
 
 import styles from "./style.module.css";
-import WordArea from "./wordArea/WordArea";
 
 export type HeaderPropsType = {
   drawTime: number;

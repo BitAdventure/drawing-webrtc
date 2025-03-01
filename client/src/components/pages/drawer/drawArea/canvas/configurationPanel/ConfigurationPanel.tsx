@@ -5,7 +5,7 @@ import Undo from "./undo/Undo";
 import Clear from "./clear/Clear";
 import Brush from "./brush/Brush";
 import Eraser from "./eraser/Eraser";
-import { ToolType } from "../../../Drawer";
+import { ToolType } from "../../../../../../constants/types";
 
 import styles from "./styles.module.css";
 

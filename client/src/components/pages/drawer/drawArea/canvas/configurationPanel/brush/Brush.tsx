@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import BrushIcon from "./../../../../../../../assets/draw/brush-icon.svg?react";
 import classNames from "classnames";
-import { ToolType } from "../../../../Drawer";
+import { ToolType } from "../../../../../../../constants/types";
 
 import styles from "./style.module.css";
 

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import Underline from "./../../../../../assets/draw/header/letter-underline.svg?react";
 import { v4 as uuidv4 } from "uuid";
 import { RoundStatuses } from "../../../../../constants/enums";
-import { RoundType } from "../../Drawer";
+import { RoundType } from "../../../../../constants/types";
 
 import styles from "./style.module.css";
 

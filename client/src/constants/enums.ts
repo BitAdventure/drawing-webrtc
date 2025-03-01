@@ -20,3 +20,10 @@ export enum TextMessages {
   LIKE = "likes the drawing",
   DISLIKE = "dislikes the drawing",
 }
+
+export enum ConnectionState {
+  CONNECTED = "connected",
+  CONNECTING = "connecting",
+  DISCONNECTED = "disconnected",
+  RECONNECTING = "reconnecting",
+}

@@ -1,4 +1,4 @@
-import { RoundType } from "../../Drawer";
+import { RoundType } from "../../../../../constants/types";
 
 import styles from "./style.module.css";
 
