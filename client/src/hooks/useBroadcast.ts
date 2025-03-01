@@ -1,4 +1,3 @@
-// useBroadcast.ts
 import { useCallback } from "react";
 import { ServerURL } from "../constants/constants";
 import { WebRTCService } from "../services/webrtc";
