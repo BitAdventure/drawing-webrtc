@@ -5,7 +5,7 @@ import Undo from "./undo/Undo";
 import Clear from "./clear/Clear";
 import Brush from "./brush/Brush";
 import Eraser from "./eraser/Eraser";
-import { ToolType } from "../../../../../../constants/types";
+import { ToolTypes } from "@/constants/enums";
 
 import styles from "./styles.module.css";
 
@@ -13,8 +13,8 @@ type PropsType = {
   setThickness: () => void;
   color: string;
   setColor: (hex: string) => void;
-  tool: ToolType;
-  setTool: (nextTool: ToolType) => void;
+  tool: ToolTypes;
+  setTool: (nextTool: ToolTypes) => void;
   handleUndo: () => void;
   handleClear: () => void;
 };

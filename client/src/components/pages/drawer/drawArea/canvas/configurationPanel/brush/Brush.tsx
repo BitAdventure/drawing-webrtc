@@ -1,23 +1,23 @@
 import { useCallback, useMemo } from "react";
-import BrushIcon from "./../../../../../../../assets/draw/brush-icon.svg?react";
+import BrushIcon from "@/assets/draw/brush-icon.svg?react";
 import classNames from "classnames";
-import { ToolType } from "../../../../../../../constants/types";
+import { ToolTypes } from "@/constants/enums";
 
 import styles from "./style.module.css";
 
 type PropsType = {
-  tool: ToolType;
-  setTool: (newTool: ToolType) => void;
+  tool: ToolTypes;
+  setTool: (newTool: ToolTypes) => void;
 };
 
 const Brush: React.FC<PropsType> = ({ tool, setTool }) => {
-  const handleUpdateTool = useCallback(() => setTool("pen"), [setTool]);
+  const handleUpdateTool = useCallback(() => setTool(ToolTypes.PEN), [setTool]);
 
   const brushAreaClass = useMemo(
     () =>
       classNames({
         [styles.brushArea]: true,
-        [styles.active]: tool === "pen",
+        [styles.active]: tool === ToolTypes.PEN,
       }),
     [tool]
   );

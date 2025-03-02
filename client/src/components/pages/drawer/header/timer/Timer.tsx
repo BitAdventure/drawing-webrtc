@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
-import { RoundType } from "../../../../../constants/types";
+import { RoundType } from "@/constants/types";
 
-import TimerIcon from "./../../../../../assets/icons/timer-icon.svg?react";
+import TimerIcon from "@/assets/icons/timer-icon.svg?react";
 
 import styles from "./style.module.css";
 

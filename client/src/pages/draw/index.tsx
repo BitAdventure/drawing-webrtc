@@ -1,4 +1,4 @@
-import DrawContent from "../../components/pages/drawer/Drawer";
+import DrawContent from "@/components/pages/drawer/Drawer";
 
 const Drawer = () => <DrawContent />;
 

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Layer, Line, Stage } from "react-konva";
 import ConfigurationPanel from "./canvas/configurationPanel/ConfigurationPanel";
-import { colors } from "../../../../constants/colors";
+import { colors } from "@/constants/colors";
 import { v4 as uuidv4 } from "uuid";
-import useThrottle from "../../../../hooks/useThrottle";
-import { RoundStatuses } from "../../../../constants/enums";
+import useThrottle from "@/hooks/useThrottle";
+import { RoundStatuses, ToolTypes } from "@/constants/enums";
 import Results from "./results/Results";
 import WordChoiceWaiting from "./wordChoiceWaiting/WordChoiceWaiting";
-import { RoundType, ToolType } from "../../../../constants/types";
+import { RoundType } from "@/constants/types";
 
 import styles from "./../style.module.css";
 
@@ -26,7 +26,7 @@ const TestDrawArea: React.FC<PropsType> = ({
   isDrawer,
   roundInfo,
 }) => {
-  const [tool, setTool] = useState<ToolType>("pen");
+  const [tool, setTool] = useState<ToolTypes>(ToolTypes.PEN);
   const [lines, setLines] = useState<Array<any>>(roundInfo.lines);
   const [currColor, setCurrColor] = useState<string>(colors[13]);
   const [thickness, setThickness] = useState<number>(0);
@@ -170,7 +170,7 @@ const TestDrawArea: React.FC<PropsType> = ({
               border: ".0625rem solid #000",
               width: thicknessList[thickness],
               aspectRatio: "1 / 1",
-              background: tool === "pen" ? currColor : "#fff",
+              background: tool === ToolTypes.PEN ? currColor : "#fff",
               zIndex: 4,
               position: "absolute",
               left: "50%",
@@ -206,7 +206,9 @@ const TestDrawArea: React.FC<PropsType> = ({
                 lineCap="round"
                 lineJoin="round"
                 globalCompositeOperation={
-                  line.tool === "eraser" ? "destination-out" : "source-over"
+                  line.tool === ToolTypes.ERASER
+                    ? "destination-out"
+                    : "source-over"
                 }
               />
             ))}

@@ -1,4 +1,4 @@
-import ClearIcon from "./../../../../../../../assets/draw/clear-icon.svg?react";
+import ClearIcon from "@/assets/draw/clear-icon.svg?react";
 import styles from "./style.module.css";
 
 type PropsType = {

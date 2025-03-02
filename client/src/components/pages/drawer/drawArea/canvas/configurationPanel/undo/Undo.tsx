@@ -1,4 +1,4 @@
-import UndoIcon from "./../../../../../../../assets/draw/undo-icon.svg?react";
+import UndoIcon from "@/assets/draw/undo-icon.svg?react";
 import styles from "./style.module.css";
 
 type PropsType = {

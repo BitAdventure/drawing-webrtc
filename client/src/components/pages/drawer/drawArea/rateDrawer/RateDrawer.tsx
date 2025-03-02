@@ -1,5 +1,5 @@
-import LikeIcon from "./../../../../../assets/icons/like-icon.svg?react";
-import DislikeIcon from "./../../../../../assets/icons/dislike-icon.svg?react";
+import LikeIcon from "@/assets/icons/like-icon.svg?react";
+import DislikeIcon from "@/assets/icons/dislike-icon.svg?react";
 
 import styles from "./style.module.css";
 

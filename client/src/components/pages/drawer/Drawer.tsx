@@ -1,20 +1,20 @@
-import AppLoader from "../../common/UI/appLoader/AppLoader";
+import { useCallback, useEffect, useState } from "react";
+import AppLoader from "@/components/common/UI/appLoader/AppLoader";
 import TestDrawArea from "./drawArea/DrawArea";
 import Header from "./header/Header";
 import {
   DRAW_TIME,
   HEARTBEAT_INTERVAL,
   ServerURL,
-} from "../../../constants/constants";
-import { useWebRTC } from "../../../hooks/useWebRTC";
+} from "@/constants/constants";
 import { useParams } from "react-router-dom";
-import { useCallback, useEffect, useState } from "react";
-import { UserData } from "../../../constants/types";
-import useMountEffect from "../../../hooks/useMountEffect";
-import { ConnectionState } from "../../../constants/enums";
-import { useEventSource } from "../../../hooks/useEventSource";
-import { useBroadcast } from "../../../hooks/useBroadcast";
-import { useGameState } from "../../../hooks/useGameState";
+import { UserData } from "@/constants/types";
+import { ConnectionState } from "@/constants/enums";
+import { useWebRTC } from "@/hooks/useWebRTC";
+import useMountEffect from "@/hooks/useMountEffect";
+import { useEventSource } from "@/hooks/useEventSource";
+import { useBroadcast } from "@/hooks/useBroadcast";
+import { useGameState } from "@/hooks/useGameState";
 
 import styles from "./style.module.css";
 

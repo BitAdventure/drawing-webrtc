@@ -1,5 +1,5 @@
 // import { useSelector } from "../../../../../hooks/useSelector";
-import RoundBg from "./../../../../../assets/draw/draw-round-bg.svg?react";
+import RoundBg from "@/assets/draw/draw-round-bg.svg?react";
 
 import styles from "./style.module.css";
 

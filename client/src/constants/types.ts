@@ -30,8 +30,6 @@ export type RoundType = {
   lines: Array<any>;
 };
 
-export type ToolType = "pen" | "eraser";
-
 // connection.types.ts
 
 export interface ConnectionConfig {

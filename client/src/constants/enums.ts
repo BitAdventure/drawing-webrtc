@@ -27,3 +27,8 @@ export enum ConnectionState {
   DISCONNECTED = "disconnected",
   RECONNECTING = "reconnecting",
 }
+
+export enum ToolTypes {
+  PEN = "pen",
+  ERASER = "eraser",
+}

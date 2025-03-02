@@ -1,4 +1,3 @@
-// useGameState.ts
 import { useCallback, useMemo } from "react";
 import { EventData, UserData } from "../constants/types";
 import { RoundStatuses } from "../constants/enums";

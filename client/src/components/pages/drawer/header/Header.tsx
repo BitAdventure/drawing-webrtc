@@ -1,7 +1,7 @@
 import Round from "./round/Round";
 import Timer from "./timer/Timer";
 import WordArea from "./wordArea/WordArea";
-import { RoundType } from "../../../../constants/types";
+import { RoundType } from "@/constants/types";
 
 import styles from "./style.module.css";
 
