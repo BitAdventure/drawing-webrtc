@@ -185,13 +185,11 @@ export const useWebRTC = ({
           peerData.peers[peerId].close();
           delete peerData.peers[peerId];
         }
-
-        relay(peerId, "reconnect-request", { timestamp: Date.now() });
       } else {
         console.error(`Max reconnection attempts reached for peer ${peerId}`);
       }
     },
-    [relay, updatePeerConnectionState, createOffer]
+    [updatePeerConnectionState, createOffer]
   );
 
   // Setup peer connection listeners

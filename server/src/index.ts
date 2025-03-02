@@ -518,37 +518,6 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
   }
 });
 
-app.get("/reconnect", auth, async (req: any, res: any) => {
-  try {
-    const { eventId } = req.query;
-
-    if (!eventId) {
-      return res.status(400).json({ error: "Event ID is required" });
-    }
-
-    const isInEvent = await redisClient.sIsMember(
-      `${req.user.id}:channels`,
-      eventId
-    );
-    if (!isInEvent) {
-      return res.status(404).json({ error: "User not in event" });
-    }
-
-    await markClientStatus(
-      { id: req.user.id, user: req.user },
-      ClientStatuses.CONNECTED
-    );
-
-    return res.status(200).json({
-      success: true,
-      state: serverState[eventId] || null,
-    });
-  } catch (error: any) {
-    console.error(`Error during reconnection: ${error.message}`);
-    return res.status(500).json({ error: "Failed to reconnect" });
-  }
-});
-
 app.get("*", (_, res) => {
   res.sendFile(path.join(__dirname, "static", "index.html"));
 });
