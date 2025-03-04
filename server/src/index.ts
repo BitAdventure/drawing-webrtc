@@ -456,6 +456,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
   try {
     const { eventId } = req.params;
     const { event: eventType, data } = req.body;
+    console.log("UPDATE EVENT REQ: ", req.body);
 
     switch (eventType) {
       case "start-round":
@@ -486,6 +487,9 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 
         timers[eventId] = setTimeout(
           async () => {
+            console.log(
+              `FINISH ROUND FOR EVENT ${eventId}, TIME: ${new Date().getTime()}`
+            );
             if (serverState[eventId]) {
               serverState[eventId].roundInfo.status = RoundStatuses.SHOW_RESULT;
 

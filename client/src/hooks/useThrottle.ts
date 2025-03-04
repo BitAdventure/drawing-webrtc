@@ -1,8 +1,11 @@
 import { useEffect, useRef } from "react";
 
-function useThrottle<T>(value: T, customHandler: () => void, delay: number): void {
+function useThrottle<T>(
+  value: T,
+  customHandler: () => void,
+  delay: number
+): void {
   const lastExecuted = useRef(Date.now());
-  // const lastExecuted = useRef(Date.now());
 
   useEffect(() => {
     if (Date.now() - lastExecuted.current >= delay) {
