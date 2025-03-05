@@ -29,7 +29,7 @@ export const useGameState = ({
   );
 
   // Handle start game
-  const handleStartGame = useCallback(() => {
+  const handleStartGame = useCallback(async () => {
     if (!eventId) return;
 
     const data = {
@@ -40,6 +40,23 @@ export const useGameState = ({
       startTime: new Date().getTime(),
       id: eventId,
     };
+
+    try {
+      await fetch("https://timeapi.io/api/Time/current/zone?timeZone=UTC")
+        .then((res) => res.json())
+        .then((res) => {
+          const currentDate = new Date(res.dateTime + "Z");
+          if (currentDate) {
+            console.log(
+              "UPDATE START ROUND DATE WITH SERVER FETCHED TIME: ",
+              res.dateTime
+            );
+            data.startTime = currentDate.getTime(); // in case of success fetch current time update start time field for round data
+          }
+        });
+    } catch (e) {
+      console.log("ERROR ON FETCH TIME: ", e);
+    }
 
     setEventData(
       (prev) =>

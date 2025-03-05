@@ -488,7 +488,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
         timers[eventId] = setTimeout(
           async () => {
             console.log(
-              `FINISH ROUND FOR EVENT ${eventId}, TIME: ${new Date().getTime()}`
+              `FINISH ROUND FOR EVENT ${eventId}, START TIME: ${new Date(data.startTime).getTime()}, ENDTIME: ${new Date().getTime()}`
             );
             if (serverState[eventId]) {
               serverState[eventId].roundInfo.status = RoundStatuses.SHOW_RESULT;
