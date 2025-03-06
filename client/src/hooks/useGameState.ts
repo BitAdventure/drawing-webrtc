@@ -24,8 +24,8 @@ export const useGameState = ({
 }: UseGameStateParams): UseGameStateReturn => {
   // Check if current user is drawer
   const isDrawer = useMemo(
-    () => eventData?.roundInfo.drawerId === userData?.id,
-    [eventData?.roundInfo.drawerId, userData?.id]
+    () => eventData?.roundInfo.drawerId === userData?.staticId,
+    [eventData?.roundInfo.drawerId, userData?.staticId]
   );
 
   // Handle start game

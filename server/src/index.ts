@@ -12,7 +12,7 @@ import { Job, Queue, Worker } from "bullmq";
 import { EventData, TimersMap } from "./types.js";
 
 const DRAW_TIME = 75;
-const RECONNECT_GRACE_PERIOD = 30000;
+// const RECONNECT_GRACE_PERIOD = 30000;
 const HEARTBEAT_INTERVAL = 10000;
 const PEER_TIMEOUT = 60000;
 
@@ -33,7 +33,7 @@ const serverState: {
 } = {};
 const timers: TimersMap = {};
 const clientIntervals: TimersMap = {};
-const disconnectionTimers: TimersMap = {};
+// const disconnectionTimers: TimersMap = {};
 const pendingIceCandidates: { [key: string]: Array<any> } = {};
 
 const redisClient = await initializeRedisClient();
@@ -129,56 +129,108 @@ async function disconnected(client: any): Promise<void> {
     delete clientIntervals[client.id];
   }
 
-  if (disconnectionTimers[client.id]) {
-    clearTimeout(disconnectionTimers[client.id]);
-  }
-
   await markClientStatus(client, ClientStatuses.DISCONNECTED);
 
-  disconnectionTimers[client.id] = setTimeout(async () => {
-    console.log(
-      `Grace period ended for client ${client.id} - cleaning up resources`
+  console.log(
+    `Grace period ended for client ${client.id} - cleaning up resources`
+  );
+
+  delete clients[client.id];
+
+  try {
+    await redisClient.del(`messages:${client.id}`);
+
+    const eventIds = await redisClient.sMembers(`${client.id}:channels`);
+    await redisClient.del(`${client.id}:channels`);
+
+    await Promise.all(
+      eventIds.map(async (eventId: string) => {
+        await redisClient.sRem(`channels:${eventId}`, client.id);
+        const peerIds = await redisClient.sMembers(`channels:${eventId}`);
+
+        const msg = JSON.stringify({
+          event: "remove-peer",
+          data: {
+            peer: client.user,
+            eventId,
+          },
+        });
+
+        await Promise.all(
+          peerIds.map(async (peerId: string) => {
+            if (peerId !== client.id && (await isPeerAvailable(peerId))) {
+              await redisClient.publish(`messages:${peerId}`, msg);
+            }
+          })
+        );
+      })
     );
 
-    delete clients[client.id];
-    delete disconnectionTimers[client.id];
-
-    try {
-      await redisClient.del(`messages:${client.id}`);
-
-      const eventIds = await redisClient.sMembers(`${client.id}:channels`);
-      await redisClient.del(`${client.id}:channels`);
-
-      await Promise.all(
-        eventIds.map(async (eventId: string) => {
-          await redisClient.sRem(`channels:${eventId}`, client.id);
-          const peerIds = await redisClient.sMembers(`channels:${eventId}`);
-
-          const msg = JSON.stringify({
-            event: "remove-peer",
-            data: {
-              peer: client.user,
-              eventId,
-            },
-          });
-
-          await Promise.all(
-            peerIds.map(async (peerId: string) => {
-              if (peerId !== client.id && (await isPeerAvailable(peerId))) {
-                await redisClient.publish(`messages:${peerId}`, msg);
-              }
-            })
-          );
-        })
-      );
-
-      await redisClient.del(`client:status:${client.id}`);
-      await redisClient.del(`peer:presence:${client.id}`);
-    } catch (error: any) {
-      console.error(`Error during client cleanup: ${error.message}`);
-    }
-  }, RECONNECT_GRACE_PERIOD);
+    await redisClient.del(`client:status:${client.id}`);
+    await redisClient.del(`peer:presence:${client.id}`);
+  } catch (error: any) {
+    console.error(`Error during client cleanup: ${error.message}`);
+  }
 }
+
+// async function disconnected(client: any): Promise<void> {
+//   console.log(`Client ${client.id} disconnected - starting grace period`);
+
+//   if (clientIntervals[client.id]) {
+//     clearInterval(clientIntervals[client.id]);
+//     delete clientIntervals[client.id];
+//   }
+
+//   if (disconnectionTimers[client.id]) {
+//     clearTimeout(disconnectionTimers[client.id]);
+//   }
+
+//   await markClientStatus(client, ClientStatuses.DISCONNECTED);
+
+//   disconnectionTimers[client.id] = setTimeout(async () => {
+//     console.log(
+//       `Grace period ended for client ${client.id} - cleaning up resources`
+//     );
+
+//     delete clients[client.id];
+//     delete disconnectionTimers[client.id];
+
+//     try {
+//       await redisClient.del(`messages:${client.id}`);
+
+//       const eventIds = await redisClient.sMembers(`${client.id}:channels`);
+//       await redisClient.del(`${client.id}:channels`);
+
+//       await Promise.all(
+//         eventIds.map(async (eventId: string) => {
+//           await redisClient.sRem(`channels:${eventId}`, client.id);
+//           const peerIds = await redisClient.sMembers(`channels:${eventId}`);
+
+//           const msg = JSON.stringify({
+//             event: "remove-peer",
+//             data: {
+//               peer: client.user,
+//               eventId,
+//             },
+//           });
+
+//           await Promise.all(
+//             peerIds.map(async (peerId: string) => {
+//               if (peerId !== client.id && (await isPeerAvailable(peerId))) {
+//                 await redisClient.publish(`messages:${peerId}`, msg);
+//               }
+//             })
+//           );
+//         })
+//       );
+
+//       await redisClient.del(`client:status:${client.id}`);
+//       await redisClient.del(`peer:presence:${client.id}`);
+//     } catch (error: any) {
+//       console.error(`Error during client cleanup: ${error.message}`);
+//     }
+//   }, RECONNECT_GRACE_PERIOD);
+// }
 
 function auth(req: any, res: any, next: any): void {
   let token: string | undefined;
@@ -195,22 +247,26 @@ function auth(req: any, res: any, next: any): void {
     if (err) {
       return res.sendStatus(403);
     }
-    req.user = user;
+    req.user = {
+      ...user,
+      id: token,
+    };
     next();
   });
 }
 
 app.post("/access", (req: any, res: any) => {
-  if (!req.body.username) {
+  if (!req.body.id) {
     return res.sendStatus(403);
   }
   const user = {
-    id: uuidv4(),
-    username: req.body.username,
+    staticId: req.body.id,
+    createdAt: new Date().toISOString(),
   };
 
   const token = jwt.sign(user, process.env.TOKEN_SECRET || "", {
-    expiresIn: "20 days",
+    expiresIn: "5 hours",
+    // expiresIn: "20 days",
   });
 
   return res.json({ token });
@@ -241,12 +297,6 @@ app.get("/connect", auth, async (req: any, res: any) => {
   };
 
   console.log(`Client ${client.id} connected`);
-
-  if (disconnectionTimers[client.id]) {
-    clearTimeout(disconnectionTimers[client.id]);
-    delete disconnectionTimers[client.id];
-    console.log(`Client ${client.id} reconnected within grace period`);
-  }
 
   clients[client.id] = client;
   await markClientStatus(client, ClientStatuses.CONNECTED);
@@ -281,6 +331,71 @@ app.get("/connect", auth, async (req: any, res: any) => {
   });
 });
 
+// app.get("/connect", auth, async (req: any, res: any) => {
+//   const { eventId } = req.query;
+
+//   if (req.headers.accept !== "text/event-stream") {
+//     return res.sendStatus(404);
+//   }
+
+//   res.setHeader("Cache-Control", "no-cache");
+//   res.setHeader("Content-Type", "text/event-stream");
+//   res.setHeader("Access-Control-Allow-Origin", "*");
+//   res.flushHeaders();
+
+//   const client = {
+//     id: req.user.id,
+//     eventId,
+//     user: req.user,
+//     redis: pubSubRedisClient,
+//     emit: (event: string, data: any) => {
+//       res.write(`id: ${uuidv4()}\n`);
+//       res.write(`event: ${event}\n`);
+//       res.write(`data: ${JSON.stringify(data)}\n\n`);
+//     },
+//   };
+
+//   console.log(`Client ${client.id} connected`);
+
+//   if (disconnectionTimers[client.id]) {
+//     clearTimeout(disconnectionTimers[client.id]);
+//     delete disconnectionTimers[client.id];
+//     console.log(`Client ${client.id} reconnected within grace period`);
+//   }
+
+//   clients[client.id] = client;
+//   await markClientStatus(client, ClientStatuses.CONNECTED);
+
+//   client.redis.subscribe(
+//     [`messages:${client.id}`, `messages:${eventId}`],
+//     (msg: any) => {
+//       try {
+//         const { event, data } = JSON.parse(msg);
+//         client.emit(event, data);
+//       } catch (error: any) {
+//         console.error(`Error handling message: ${error.message}`);
+//       }
+//     }
+//   );
+
+//   client.emit("connected", { user: req.user });
+
+//   const heartbeatInterval = setInterval(() => {
+//     try {
+//       client.emit("ping", { timestamp: Date.now() });
+//       updatePeerPresence(client.id);
+//     } catch (error: any) {
+//       console.error(`Error sending heartbeat: ${error.message}`);
+//     }
+//   }, HEARTBEAT_INTERVAL);
+
+//   clientIntervals[client.id] = heartbeatInterval;
+
+//   req.on("close", () => {
+//     disconnected(client);
+//   });
+// });
+
 const processJoin = async (job: Job): Promise<any> => {
   try {
     const { user, eventId } = job.data;
@@ -294,7 +409,7 @@ const processJoin = async (job: Job): Promise<any> => {
           status: RoundStatuses.UPCOMING,
           startTime: 0,
           word: null,
-          drawerId: user.id,
+          drawerId: user.staticId,
           lines: [],
         },
       };
@@ -537,9 +652,9 @@ async function cleanup(): Promise<void> {
       clearInterval(intervalId);
     }
 
-    for (const timerId of Object.values(disconnectionTimers)) {
-      clearTimeout(timerId);
-    }
+    // for (const timerId of Object.values(disconnectionTimers)) {
+    //   clearTimeout(timerId);
+    // }
 
     for (const timerId of Object.values(timers)) {
       clearTimeout(timerId);

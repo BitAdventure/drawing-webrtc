@@ -15,6 +15,7 @@ import useMountEffect from "@/hooks/useMountEffect";
 import { useEventSource } from "@/hooks/useEventSource";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useGameState } from "@/hooks/useGameState";
+import { v4 as uuidv4 } from "uuid";
 
 import styles from "./style.module.css";
 
@@ -26,34 +27,60 @@ const Drawer: React.FC = () => {
 
   // Get token
   const getToken = useCallback(async () => {
-    let actualToken: string = localStorage.getItem("jwtToken") || "";
-    if (!actualToken) {
-      try {
-        const res = await fetch(`${ServerURL}/access`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username: "user" + Math.floor(Math.random() * 100000),
-          }),
-        });
+    const userId: string = localStorage.getItem("webRTCUserId") || uuidv4();
 
-        if (!res.ok) {
-          throw new Error("Failed to get access token");
-        }
+    try {
+      const res = await fetch(`${ServerURL}/access`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: userId,
+        }),
+      });
 
-        const { token } = await res.json();
-        localStorage.setItem("jwtToken", token);
-        actualToken = token;
-      } catch (error) {
-        console.error("Error getting token:", error);
-        return;
+      if (!res.ok) {
+        throw new Error("Failed to get access token");
       }
-    }
 
-    setToken(actualToken);
+      const { token } = await res.json();
+      localStorage.setItem("webRTCUserId", userId);
+      setToken(token);
+    } catch (error) {
+      console.error("Error getting token:", error);
+      return;
+    }
   }, []);
+  // const getToken = useCallback(async () => {
+  //   let actualToken: string = localStorage.getItem("jwtToken") || "";
+  //   if (!actualToken) {
+  //     try {
+  //       const res = await fetch(`${ServerURL}/access`, {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           username: "user" + Math.floor(Math.random() * 100000),
+  //         }),
+  //       });
+
+  //       if (!res.ok) {
+  //         throw new Error("Failed to get access token");
+  //       }
+
+  //       const { token } = await res.json();
+  //       localStorage.setItem("jwtToken", token);
+  //       actualToken = token;
+  //     } catch (error) {
+  //       console.error("Error getting token:", error);
+  //       return;
+  //     }
+  //   }
+
+  //   setToken(actualToken);
+  // }, []);
 
   useMountEffect(() => {
     getToken();

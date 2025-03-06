@@ -6,8 +6,9 @@ export type EventData = {
 };
 
 export type UserData = {
-  id: string;
-  username: string;
+  id: string; // it's token, used for all keys in redis subscription and server state
+  staticId: string; // statis hasura player id
+  createdAt: string;
   // Add other user properties as needed
 };
 export type UserPeerData = {
