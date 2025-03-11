@@ -1,18 +1,19 @@
-import { useCallback, useMemo } from "react";
-import { EventData, UserData } from "../constants/types";
-import { RoundStatuses } from "../constants/enums";
+import { useCallback, useMemo, useState } from "react";
+import { EventData, RoundType, UserData } from "../constants/types";
+import { ServerURL } from "@/constants/constants";
 
 interface UseGameStateParams {
   eventId: string | undefined;
   userData: UserData | null;
   eventData: EventData | null;
   setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
-  broadcast: (data: string) => void;
+  token: string;
 }
 
 interface UseGameStateReturn {
   isDrawer: boolean;
   handleStartGame: () => void;
+  startGameLoading: boolean;
 }
 
 export const useGameState = ({
@@ -20,67 +21,56 @@ export const useGameState = ({
   userData,
   eventData,
   setEventData,
-  broadcast,
+  token,
 }: UseGameStateParams): UseGameStateReturn => {
   // Check if current user is drawer
   const isDrawer = useMemo(
     () => eventData?.roundInfo.drawerId === userData?.staticId,
     [eventData?.roundInfo.drawerId, userData?.staticId]
   );
+  const [startGameLoading, setStartGameLoading] = useState(false);
 
   // Handle start game
   const handleStartGame = useCallback(async () => {
-    if (!eventId) return;
+    if (!eventId || startGameLoading) return;
 
-    const data = {
-      word: {
-        label: "Example",
-        id: "example",
-      },
-      startTime: new Date().getTime(),
-      id: eventId,
-    };
+    setStartGameLoading(true);
 
     try {
-      await fetch("https://timeapi.io/api/Time/current/zone?timeZone=UTC")
-        .then((res) => res.json())
-        .then((res) => {
-          const currentDate = new Date(res.dateTime + "Z");
-          if (currentDate) {
-            console.log(
-              "UPDATE START ROUND DATE WITH SERVER FETCHED TIME: ",
-              res.dateTime
-            );
-            data.startTime = currentDate.getTime(); // in case of success fetch current time update start time field for round data
-          }
-        });
-    } catch (e) {
-      console.log("ERROR ON FETCH TIME: ", e);
-    }
-
-    setEventData(
-      (prev) =>
-        prev && {
-          ...prev,
-          roundInfo: {
-            ...prev.roundInfo,
-            startTime: data.startTime,
-            word: data.word,
-            status: RoundStatuses.ONGOING,
-          },
-        }
-    );
-
-    broadcast(
-      JSON.stringify({
-        event: "start-round",
-        data,
+      await fetch(`${ServerURL}/updateEvent/${eventId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          event: "start-round",
+        }),
       })
-    );
-  }, [broadcast, eventId, setEventData]);
+        .then((res) => res.json())
+        .then((res: Pick<RoundType, "startTime" | "status" | "word">) => {
+          console.log(res);
+          setEventData(
+            (prev) =>
+              prev && {
+                ...prev,
+                roundInfo: {
+                  ...prev.roundInfo,
+                  ...res,
+                },
+              }
+          );
+        });
+    } catch (error) {
+      console.error("Error in start game:", error);
+    } finally {
+      setStartGameLoading(false);
+    }
+  }, [eventId, setEventData, startGameLoading, token]);
 
   return {
     isDrawer,
     handleStartGame,
+    startGameLoading,
   };
 };

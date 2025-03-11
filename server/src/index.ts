@@ -9,7 +9,7 @@ import { initializeRedisClient, redisOptions } from "./redisClient.js";
 import cors from "cors";
 import { RoundStatuses, ClientStatuses } from "./enums.js";
 import { Job, Queue, Worker } from "bullmq";
-import { EventData, TimersMap } from "./types.js";
+import { EventData, RoundInfo, TimersMap } from "./types.js";
 
 const DRAW_TIME = 75;
 // const RECONNECT_GRACE_PERIOD = 30000;
@@ -588,9 +588,8 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
           },
         };
 
-        serverState[eventId].roundInfo = {
-          ...serverState[eventId].roundInfo,
-          startTime: data.startTime,
+        const updates: Pick<RoundInfo, "startTime" | "status" | "word"> = {
+          startTime: new Date().getTime(),
           status: RoundStatuses.ONGOING,
           word: {
             label: "Example",
@@ -598,12 +597,24 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
           },
         };
 
+        serverState[eventId].roundInfo = {
+          ...serverState[eventId].roundInfo,
+          ...updates,
+        };
+
+        const msg = {
+          event: "start-round",
+          data: updates,
+        };
+        console.log("SEND START ROUND MESSAGE TO ALL EVENT SUBSCRIBERS: ", msg);
+        await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
+
         timers[eventId] && clearTimeout(timers[eventId]);
 
         timers[eventId] = setTimeout(
           async () => {
             console.log(
-              `FINISH ROUND FOR EVENT ${eventId}, START TIME: ${new Date(data.startTime).getTime()}, ENDTIME: ${new Date().getTime()}`
+              `FINISH ROUND FOR EVENT ${eventId}, START TIME: ${updates.startTime}, ENDTIME: ${new Date().getTime()}`
             );
             if (serverState[eventId]) {
               serverState[eventId].roundInfo.status = RoundStatuses.SHOW_RESULT;
@@ -622,9 +633,10 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
               delete serverState[eventId];
             }
           },
-          data.startTime + DRAW_TIME * 1000 - new Date().getTime()
+          updates.startTime + DRAW_TIME * 1000 - new Date().getTime()
         );
-        break;
+
+        return res.json(updates);
       case "lines":
         if (serverState[eventId]) serverState[eventId].roundInfo.lines = data;
         break;

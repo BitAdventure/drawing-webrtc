@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import useStateRef from "react-usestateref";
 import { WebRTCService } from "../services/webrtc";
-import { ConnectionState, RoundStatuses } from "../constants/enums";
+import { ConnectionState } from "../constants/enums";
 import { ICE_GATHERING_TIMEOUT, RTC_CONFIG } from "../constants/constants";
 import { EventData, RelayFunction, UserPeerData } from "../constants/types";
 
@@ -59,6 +59,7 @@ export const useWebRTC = ({
     (peerId: string, data: any) => {
       try {
         const msg = JSON.parse(data);
+        console.log(msg);
         switch (msg.event) {
           case "lines":
             eventDataRef.current &&
@@ -67,18 +68,6 @@ export const useWebRTC = ({
                 roundInfo: {
                   ...eventDataRef.current.roundInfo,
                   lines: msg.data,
-                },
-              });
-            break;
-          case "start-round":
-            eventDataRef.current &&
-              setEventData({
-                ...eventDataRef.current,
-                roundInfo: {
-                  ...eventDataRef.current.roundInfo,
-                  startTime: msg.data.startTime,
-                  word: msg.data.word,
-                  status: RoundStatuses.ONGOING,
                 },
               });
             break;

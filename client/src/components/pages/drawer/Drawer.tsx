@@ -212,12 +212,12 @@ const Drawer: React.FC = () => {
     reconnectTimeoutRef,
   ]);
 
-  const { isDrawer, handleStartGame } = useGameState({
+  const { isDrawer, handleStartGame, startGameLoading } = useGameState({
     eventId: id,
     userData,
     eventData,
     setEventData,
-    broadcast,
+    token,
   });
 
   return loading || !eventData ? (
@@ -232,6 +232,7 @@ const Drawer: React.FC = () => {
       <main className={styles.mainAreaWrap}>
         <TestDrawArea
           handleStartGame={handleStartGame}
+          startGameLoading={startGameLoading}
           broadcast={broadcast}
           isDrawer={isDrawer}
           roundInfo={eventData.roundInfo}

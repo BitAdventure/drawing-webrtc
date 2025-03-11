@@ -47,6 +47,7 @@ export interface EventSourceHandlers {
   iceCandidate: (event: any) => void;
   handleJoin: (event: any) => void;
   handleCompleteJoin: (event: any) => void;
+  handleStartRound: (event: any) => void;
   handleFinishRound: (event: any) => void;
   handleEventSourceError: (error: any) => void;
 }

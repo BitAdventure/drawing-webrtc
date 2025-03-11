@@ -6,19 +6,22 @@ type PropsType = {
   isDrawer: boolean;
   roundInfo: RoundType;
   handleStartGame: () => void;
+  startGameLoading: boolean;
 };
 
 const WordChoiceWaiting: React.FC<PropsType> = ({
   isDrawer,
   handleStartGame,
+  startGameLoading,
 }) => {
   return (
     <div className={styles.wordChoice}>
-      {isDrawer ? (
+      {isDrawer && !startGameLoading ? (
         <>
           <button
             type="button"
             onClick={handleStartGame}
+            disabled={startGameLoading}
             className={styles.wordChoiceTitle}
           >
             START

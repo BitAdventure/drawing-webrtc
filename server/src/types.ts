@@ -2,17 +2,19 @@ import { Server, Socket } from "socket.io";
 import { EventStatuses, RoundStatuses } from "./enums.js";
 import { type RedisClient } from "./redisClient.js";
 
+export type RoundInfo = {
+  id: string;
+  index: number;
+  status: RoundStatuses;
+  startTime: number;
+  word: Word | null;
+  drawerId: string;
+  lines: Array<any>;
+};
+
 export type EventData = {
   id: string;
-  roundInfo: {
-    id: string;
-    index: number;
-    status: RoundStatuses;
-    startTime: number;
-    word: Word | null;
-    drawerId: string;
-    lines: Array<any>;
-  };
+  roundInfo: RoundInfo;
 };
 
 export type Word = {

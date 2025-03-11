@@ -114,6 +114,26 @@ export const useEventSource = ({
     [scheduleReconnect, setEventData, setLoading]
   );
 
+  // Handle start round
+  const handleStartRound = useCallback(
+    (event: any) => {
+      const updates = JSON.parse(event.data);
+      console.log(updates);
+      updates &&
+        setEventData((prevData) => {
+          if (!prevData) return null;
+          return {
+            ...prevData,
+            roundInfo: {
+              ...prevData.roundInfo,
+              ...updates,
+            },
+          };
+        });
+    },
+    [setEventData]
+  );
+
   // Handle finish round
   const handleFinishRound = useCallback(() => {
     setEventData((prevData) => {
@@ -152,6 +172,7 @@ export const useEventSource = ({
           iceCandidate,
           handleJoin,
           handleCompleteJoin,
+          handleStartRound,
           handleFinishRound,
           handleEventSourceError,
         },
@@ -170,6 +191,7 @@ export const useEventSource = ({
     iceCandidate,
     handleJoin,
     handleCompleteJoin,
+    handleStartRound,
     handleFinishRound,
     handleEventSourceError,
   ]);

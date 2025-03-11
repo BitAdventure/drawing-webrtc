@@ -18,10 +18,12 @@ type PropsType = {
   handleStartGame: () => void;
   isDrawer: boolean;
   roundInfo: RoundType;
+  startGameLoading: boolean;
 };
 
 const TestDrawArea: React.FC<PropsType> = ({
   handleStartGame,
+  startGameLoading,
   broadcast,
   isDrawer,
   roundInfo,
@@ -156,6 +158,7 @@ const TestDrawArea: React.FC<PropsType> = ({
             isDrawer={isDrawer}
             roundInfo={roundInfo}
             handleStartGame={handleStartGame}
+            startGameLoading={startGameLoading}
           />
         )
       )}

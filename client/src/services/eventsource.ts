@@ -58,6 +58,11 @@ export class EventSourceService {
       this.handlers.handleCompleteJoin
     );
     eventSource.addEventListener(
+      "start-round",
+      this.handlers.handleStartRound,
+      false
+    );
+    eventSource.addEventListener(
       "finish-round",
       this.handlers.handleFinishRound,
       false
