@@ -19,7 +19,7 @@ const Timer: React.FC<PropsType> = ({ drawTime, isDrawer, roundInfo }) => {
     if (!roundInfo.startTime) {
       return drawTime;
     }
-    return Math.ceil(
+    return Math.floor(
       (roundInfo.startTime + drawTime * 1000 - new Date().getTime()) / 1000
     );
   }, [drawTime, roundInfo.startTime]);

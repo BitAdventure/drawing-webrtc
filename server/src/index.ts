@@ -12,7 +12,6 @@ import { Job, Queue, Worker } from "bullmq";
 import { EventData, RoundInfo, TimersMap } from "./types.js";
 
 const DRAW_TIME = 75;
-// const RECONNECT_GRACE_PERIOD = 30000;
 const HEARTBEAT_INTERVAL = 10000;
 const PEER_TIMEOUT = 60000;
 
