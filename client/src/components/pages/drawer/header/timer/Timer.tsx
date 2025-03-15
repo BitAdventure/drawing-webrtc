@@ -15,16 +15,18 @@ type PropsType = {
 const Timer: React.FC<PropsType> = ({ drawTime, isDrawer, roundInfo }) => {
   const [timerId, setTimerId] = useState(0);
 
-  const getTimeRemaining = useCallback(() => {
-    if (!roundInfo.startTime) {
-      return drawTime;
-    }
-    return Math.floor(
-      (roundInfo.startTime + drawTime * 1000 - new Date().getTime()) / 1000
-    );
-  }, [drawTime, roundInfo.startTime]);
+  const getTimeRemaining = useCallback(
+    () =>
+      !roundInfo.startTime
+        ? drawTime
+        : Math.ceil(
+            (roundInfo.startTime + drawTime * 1000 - new Date().getTime()) /
+              1000
+          ),
+    [drawTime, roundInfo.startTime]
+  );
 
-  const [timeRemaining, setTimeRemaining] = useState<number>(
+  const [timeRemaining, setTimeRemaining] = useState(
     getTimeRemaining() > 0 ? getTimeRemaining() : 0
   );
 

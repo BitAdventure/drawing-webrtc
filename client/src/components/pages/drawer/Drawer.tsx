@@ -220,6 +220,11 @@ const Drawer: React.FC = () => {
     token,
   });
 
+  const handleResetStorage = useCallback(() => {
+    localStorage.removeItem("webRTCUserId");
+    window.location.reload();
+  }, []);
+
   return loading || !eventData ? (
     <AppLoader />
   ) : (
@@ -237,6 +242,20 @@ const Drawer: React.FC = () => {
           isDrawer={isDrawer}
           roundInfo={eventData.roundInfo}
         />
+        <button
+          type="button"
+          style={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            border: "1px solid #D9D9D9",
+            padding: ".25rem .5rem",
+            fontSize: "1.5rem",
+          }}
+          onClick={handleResetStorage}
+        >
+          RESET STORAGE
+        </button>
       </main>
     </div>
   );
