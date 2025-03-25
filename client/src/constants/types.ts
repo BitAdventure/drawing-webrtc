@@ -18,15 +18,17 @@ export type UserPeerData = {
   reconnectAttempts: { [key: string]: number };
 };
 
+export type WordType = {
+  id: string;
+  label: string;
+};
+
 export type RoundType = {
   id: string;
   index: number;
   status: RoundStatuses;
   startTime: number;
-  word: {
-    id: string;
-    label: string;
-  } | null;
+  word: WordType | null;
   drawerId: string;
   lines: Array<any>;
 };

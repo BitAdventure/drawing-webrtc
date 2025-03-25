@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { EventSourceService } from "../services/eventsource";
-import { EventData, UserData } from "../constants/types";
+import { EventData, UserData, WordType } from "../constants/types";
 import { RECONNECT_TIMEOUT, ServerURL } from "../constants/constants";
 import { RoundStatuses } from "../constants/enums";
 
@@ -117,19 +117,44 @@ export const useEventSource = ({
   // Handle start round
   const handleStartRound = useCallback(
     (event: any) => {
-      const updates = JSON.parse(event.data);
-      console.log(updates);
-      updates &&
-        setEventData((prevData) => {
-          if (!prevData) return null;
-          return {
-            ...prevData,
-            roundInfo: {
-              ...prevData.roundInfo,
-              ...updates,
-            },
-          };
-        });
+      const {
+        startTime,
+        dateValues,
+        ...updates
+      }: {
+        startTime: number;
+        dateValues: Array<number>;
+        status: RoundStatuses;
+        word: WordType;
+      } = JSON.parse(event.data);
+
+      if (startTime && dateValues) {
+        const [year, month, day, hours, minutes, seconds, milliseconds] =
+          dateValues;
+
+        const localStartTimeTimestamp = new Date(
+          year,
+          month,
+          day,
+          hours,
+          minutes,
+          seconds,
+          milliseconds
+        ).getTime();
+
+        updates &&
+          setEventData((prevData) => {
+            if (!prevData) return null;
+            return {
+              ...prevData,
+              roundInfo: {
+                ...prevData.roundInfo,
+                ...updates,
+                startTime: localStartTimeTimestamp,
+              },
+            };
+          });
+      }
     },
     [setEventData]
   );

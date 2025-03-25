@@ -587,8 +587,10 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
           },
         };
 
+        const currentDate = new Date();
+
         const updates: Pick<RoundInfo, "startTime" | "status" | "word"> = {
-          startTime: new Date().getTime(),
+          startTime: currentDate.getTime(),
           status: RoundStatuses.ONGOING,
           word: {
             label: "Example",
@@ -603,7 +605,18 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 
         const msg = {
           event: "start-round",
-          data: updates,
+          data: {
+            ...updates,
+            dateValues: [
+              currentDate.getFullYear(),
+              currentDate.getMonth(),
+              currentDate.getDate(),
+              currentDate.getHours(),
+              currentDate.getMinutes(),
+              currentDate.getSeconds(),
+              currentDate.getMilliseconds(),
+            ],
+          },
         };
         console.log("SEND START ROUND MESSAGE TO ALL EVENT SUBSCRIBERS: ", msg);
         await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
