@@ -16,6 +16,23 @@ const MainLayout = () => {
       delay: 1000,
     });
 
+    fetch(`${ServerURL}/time`, {
+      method: "POST",
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        console.log(
+          "SERVER TIME FROM DIRECT FETCH: ",
+          new Date(res.time),
+          res.time
+        );
+        console.log(
+          "LOCAL TIME FROM DIRECT FETCH: ",
+          new Date(),
+          new Date().toISOString()
+        );
+      });
+
     const syncTime = async () => {
       try {
         const syncedTime = await ts.now(); // Get synchronized server time
