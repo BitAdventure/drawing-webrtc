@@ -10,14 +10,8 @@ const MainLayout = () => {
   const [timeDifferenceLoading, setTimeDifferenceLodaing] = useState(true);
 
   useEffect(() => {
-    // fetch(`${ServerURL}/time`, {
-    //   method: "GET",
-    // })
-    //   .then((res) => res.json())
-    //   .then((res) => console.log(res));
     const ts = create({
       server: `${ServerURL}/time`, // Your server endpoint to fetch time
-      interval: 0, // No regular sync
       repeat: 3,
       delay: 1000,
     });
