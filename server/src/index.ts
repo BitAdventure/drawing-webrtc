@@ -649,7 +649,8 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 });
 
 app.post("/time", (_: any, res: any) => {
-  return res.json({ time: new Date().toISOString() });
+  const time = new Date().toISOString();
+  return res.json({ time });
 });
 
 app.get("*", (_, res) => {
