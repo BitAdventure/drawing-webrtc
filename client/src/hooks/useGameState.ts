@@ -8,6 +8,7 @@ interface UseGameStateParams {
   eventData: EventData | null;
   setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
   token: string;
+  timeDifference: number;
 }
 
 interface UseGameStateReturn {
@@ -22,6 +23,7 @@ export const useGameState = ({
   eventData,
   setEventData,
   token,
+  timeDifference,
 }: UseGameStateParams): UseGameStateReturn => {
   // Check if current user is drawer
   const isDrawer = useMemo(
@@ -48,25 +50,30 @@ export const useGameState = ({
         }),
       })
         .then((res) => res.json())
-        .then((res: Pick<RoundType, "startTime" | "status" | "word">) => {
-          console.log(res);
-          setEventData(
-            (prev) =>
-              prev && {
-                ...prev,
-                roundInfo: {
-                  ...prev.roundInfo,
-                  ...res,
-                },
-              }
-          );
-        });
+        .then(
+          ({
+            startTime,
+            ...res
+          }: Pick<RoundType, "startTime" | "status" | "word">) => {
+            setEventData(
+              (prev) =>
+                prev && {
+                  ...prev,
+                  roundInfo: {
+                    ...prev.roundInfo,
+                    ...res,
+                    startTime: startTime + timeDifference,
+                  },
+                }
+            );
+          }
+        );
     } catch (error) {
       console.error("Error in start game:", error);
     } finally {
       setStartGameLoading(false);
     }
-  }, [eventId, setEventData, startGameLoading, token]);
+  }, [eventId, setEventData, startGameLoading, token, timeDifference]);
 
   return {
     isDrawer,

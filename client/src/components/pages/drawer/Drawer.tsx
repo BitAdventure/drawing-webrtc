@@ -19,7 +19,11 @@ import { v4 as uuidv4 } from "uuid";
 
 import styles from "./style.module.css";
 
-const Drawer: React.FC = () => {
+type PropsType = {
+  timeDifference: number;
+};
+
+const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string>("");
@@ -52,35 +56,6 @@ const Drawer: React.FC = () => {
       return;
     }
   }, []);
-  // const getToken = useCallback(async () => {
-  //   let actualToken: string = localStorage.getItem("jwtToken") || "";
-  //   if (!actualToken) {
-  //     try {
-  //       const res = await fetch(`${ServerURL}/access`, {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //         body: JSON.stringify({
-  //           username: "user" + Math.floor(Math.random() * 100000),
-  //         }),
-  //       });
-
-  //       if (!res.ok) {
-  //         throw new Error("Failed to get access token");
-  //       }
-
-  //       const { token } = await res.json();
-  //       localStorage.setItem("jwtToken", token);
-  //       actualToken = token;
-  //     } catch (error) {
-  //       console.error("Error getting token:", error);
-  //       return;
-  //     }
-  //   }
-
-  //   setToken(actualToken);
-  // }, []);
 
   useMountEffect(() => {
     getToken();
@@ -142,6 +117,7 @@ const Drawer: React.FC = () => {
     removePeer,
     sessionDescription,
     iceCandidate,
+    timeDifference,
   });
 
   // Initialize broadcast
@@ -218,6 +194,7 @@ const Drawer: React.FC = () => {
     eventData,
     setEventData,
     token,
+    timeDifference,
   });
 
   const handleResetStorage = useCallback(() => {

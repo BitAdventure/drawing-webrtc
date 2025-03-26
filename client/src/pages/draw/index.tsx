@@ -1,5 +1,7 @@
-import DrawContent from "@/components/pages/drawer/Drawer";
+// import DrawContent from "@/components/pages/drawer/Drawer";
 
-const Drawer = () => <DrawContent />;
+import TimeSyncWrapper from "@/components/pages/drawer/TimeSyncWrapper";
+
+const Drawer = () => <TimeSyncWrapper />;
 
 export default Drawer;

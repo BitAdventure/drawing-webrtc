@@ -14,6 +14,7 @@ interface UseEventSourceParams {
   removePeer: (data: any) => void;
   sessionDescription: (data: any) => Promise<void>;
   iceCandidate: (data: any) => Promise<void>;
+  timeDifference: number;
 }
 
 interface UseEventSourceReturn {
@@ -33,6 +34,7 @@ export const useEventSource = ({
   removePeer,
   sessionDescription,
   iceCandidate,
+  timeDifference,
 }: UseEventSourceParams): UseEventSourceReturn => {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
@@ -104,20 +106,32 @@ export const useEventSource = ({
   const handleCompleteJoin = useCallback(
     async (event: any) => {
       try {
-        setEventData(JSON.parse(event.data));
+        const rawEventData = JSON.parse(event.data);
+        setEventData({
+          ...rawEventData,
+          roundInfo: {
+            ...rawEventData.roundInfo,
+            startTime:
+              rawEventData.roundInfo.startTime &&
+              rawEventData.roundInfo.startTime + timeDifference,
+          },
+        });
         setLoading(false);
       } catch (error) {
         console.error("Error completing join:", error);
         scheduleReconnect();
       }
     },
-    [scheduleReconnect, setEventData, setLoading]
+    [scheduleReconnect, setEventData, setLoading, timeDifference]
   );
 
   // Handle start round
   const handleStartRound = useCallback(
     (event: any) => {
-      const updates: {
+      const {
+        startTime,
+        ...updates
+      }: {
         status: RoundStatuses;
         startTime: number;
         word: WordType;
@@ -131,11 +145,12 @@ export const useEventSource = ({
             roundInfo: {
               ...prevData.roundInfo,
               ...updates,
+              startTime: startTime + timeDifference,
             },
           };
         });
     },
-    [setEventData]
+    [setEventData, timeDifference]
   );
 
   // Handle finish round
