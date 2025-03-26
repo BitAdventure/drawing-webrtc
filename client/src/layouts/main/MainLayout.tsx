@@ -1,9 +1,46 @@
 import { Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { create } from "timesync";
 
 import styles from "./style.module.css";
+import AppLoader from "@/components/common/UI/appLoader/AppLoader";
+import { ServerURL } from "@/constants/constants";
 
 const MainLayout = () => {
-  return (
+  const [timeDifferenceLoading, setTimeDifferenceLodaing] = useState(true);
+
+  useEffect(() => {
+    // fetch(`${ServerURL}/time`, {
+    //   method: "GET",
+    // })
+    //   .then((res) => res.json())
+    //   .then((res) => console.log(res));
+    const ts = create({
+      server: `${ServerURL}/time`, // Your server endpoint to fetch time
+      interval: 0, // No regular sync
+      repeat: 3,
+      delay: 1000,
+    });
+
+    const syncTime = async () => {
+      try {
+        const syncedTime = await ts.now(); // Get synchronized server time
+        console.log("SERVER TIME: ", new Date(syncedTime), syncedTime);
+        console.log("LOCAL TIME: ", new Date());
+        setTimeDifferenceLodaing(false);
+        // Calculate the difference in seconds
+        // const differenceInSeconds = Math.round((syncedTime - localTime) / 1000);
+        // setTimeDifference(differenceInSeconds);
+      } catch (error) {
+        console.error("Error syncing time:", error);
+      }
+    };
+    syncTime();
+  }, []);
+
+  return timeDifferenceLoading ? (
+    <AppLoader />
+  ) : (
     <div className={styles.pageWrapper}>
       <Outlet />
     </div>

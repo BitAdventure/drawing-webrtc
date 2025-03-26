@@ -17,6 +17,7 @@
     "react-konva": "^19.0.2",
     "react-router-dom": "^7.1.5",
     "react-usestateref": "^1.0.9",
+    "timesync": "^1.0.11",
     "uuid": "^11.0.5",
     "vite-plugin-svgr": "^4.3.0"
   },

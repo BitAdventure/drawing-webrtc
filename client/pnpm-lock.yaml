@@ -29,6 +29,9 @@ importers:
       react-usestateref:
         specifier: ^1.0.9
         version: 1.0.9(react@19.0.0)
+      timesync:
+        specifier: ^1.0.11
+        version: 1.0.11
       uuid:
         specifier: ^11.0.5
         version: 11.0.5
@@ -1387,6 +1390,9 @@ packages:
     resolution: {integrity: sha512-OoohrmuUlBs8B8o6MB2Aevn+pRIH9zDALSR+6hhqVfa6fRwG/Qw9VUMSMW9VNg2CFc/MTIfabtdOVl9ODIJjpw==}
     engines: {node: '>=14.0.0'}
     hasBin: true
+
+  timesync@1.0.11:
+    resolution: {integrity: sha512-qT2Y/qAQAeQTa/M+Dteec+76vsUAbY1TQQtXBVTuNMHBkKflT2uLnqG8T+V7eK7CADhwRq+2Etmj5df9VOpkNQ==}
 
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
@@ -2775,6 +2781,12 @@ snapshots:
       css-what: 6.1.0
       csso: 5.0.5
       picocolors: 1.1.1
+
+  timesync@1.0.11:
+    dependencies:
+      debug: 4.4.0
+    transitivePeerDependencies:
+      - supports-color
 
   to-regex-range@5.0.1:
     dependencies:

@@ -117,44 +117,23 @@ export const useEventSource = ({
   // Handle start round
   const handleStartRound = useCallback(
     (event: any) => {
-      const {
-        startTime,
-        dateValues,
-        ...updates
-      }: {
-        startTime: number;
-        dateValues: Array<number>;
+      const updates: {
         status: RoundStatuses;
+        startTime: number;
         word: WordType;
       } = JSON.parse(event.data);
 
-      if (startTime && dateValues) {
-        const [year, month, day, hours, minutes, seconds, milliseconds] =
-          dateValues;
-
-        const localStartTimeTimestamp = new Date(
-          year,
-          month,
-          day,
-          hours,
-          minutes,
-          seconds,
-          milliseconds
-        ).getTime();
-
-        updates &&
-          setEventData((prevData) => {
-            if (!prevData) return null;
-            return {
-              ...prevData,
-              roundInfo: {
-                ...prevData.roundInfo,
-                ...updates,
-                startTime: localStartTimeTimestamp,
-              },
-            };
-          });
-      }
+      updates &&
+        setEventData((prevData) => {
+          if (!prevData) return null;
+          return {
+            ...prevData,
+            roundInfo: {
+              ...prevData.roundInfo,
+              ...updates,
+            },
+          };
+        });
     },
     [setEventData]
   );

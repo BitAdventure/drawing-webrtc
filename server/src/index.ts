@@ -587,10 +587,8 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
           },
         };
 
-        const currentDate = new Date();
-
         const updates: Pick<RoundInfo, "startTime" | "status" | "word"> = {
-          startTime: currentDate.getTime(),
+          startTime: new Date().getTime(),
           status: RoundStatuses.ONGOING,
           word: {
             label: "Example",
@@ -605,18 +603,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 
         const msg = {
           event: "start-round",
-          data: {
-            ...updates,
-            dateValues: [
-              currentDate.getFullYear(),
-              currentDate.getMonth(),
-              currentDate.getDate(),
-              currentDate.getHours(),
-              currentDate.getMinutes(),
-              currentDate.getSeconds(),
-              currentDate.getMilliseconds(),
-            ],
-          },
+          data: updates,
         };
         console.log("SEND START ROUND MESSAGE TO ALL EVENT SUBSCRIBERS: ", msg);
         await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
@@ -659,6 +646,10 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
     console.error(`Error updating event: ${error.message}`);
     return res.status(500).json({ error: "Failed to update event" });
   }
+});
+
+app.post("/time", (_: any, res: any) => {
+  return res.json({ time: new Date().toISOString() });
 });
 
 app.get("*", (_, res) => {
