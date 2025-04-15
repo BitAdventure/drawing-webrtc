@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 import { RoundType } from "@/constants/types";
+import { useSelector } from "@/hooks/useSelector";
 
 import TimerIcon from "@/assets/icons/timer-icon.svg?react";
 
@@ -14,27 +15,25 @@ type PropsType = {
 
 const Timer: React.FC<PropsType> = ({ drawTime, isDrawer, roundInfo }) => {
   const [timerId, setTimerId] = useState(0);
+  const isAllPlayersGuessTheWord = useSelector((state) => state.game.isAllPlayersGuessTheWord);
 
   const getTimeRemaining = useCallback(
     () =>
       !roundInfo.startTime
         ? drawTime
-        : Math.ceil(
-            (new Date(roundInfo.startTime + drawTime * 1000).getTime() -
-              new Date().getTime()) /
-              1000
-          ),
+        : Math.ceil((new Date(roundInfo.startTime + drawTime * 1000).getTime() - new Date().getTime()) / 1000),
     [drawTime, roundInfo.startTime]
   );
 
-  const [timeRemaining, setTimeRemaining] = useState(
-    getTimeRemaining() > 0 ? getTimeRemaining() : 0
-  );
+  const [timeRemaining, setTimeRemaining] = useState(() => {
+    const currTimeRemaining = getTimeRemaining();
+    return currTimeRemaining > 0 ? currTimeRemaining : 0;
+  });
 
   useEffect(() => {
     if (roundInfo.startTime) {
       setTimerId(
-        window.setInterval(() => {
+        setInterval(() => {
           const timeRemaining = getTimeRemaining();
           setTimeRemaining(timeRemaining > 0 ? timeRemaining : 0);
         }, 1000)
@@ -46,8 +45,8 @@ const Timer: React.FC<PropsType> = ({ drawTime, isDrawer, roundInfo }) => {
   }, [roundInfo.startTime, getTimeRemaining]);
 
   useEffect(() => {
-    if (timerId && timeRemaining < 1) clearInterval(timerId);
-  }, [timerId, timeRemaining, isDrawer, roundInfo.status]);
+    timerId && (timeRemaining < 1 || isAllPlayersGuessTheWord) && clearInterval(timerId);
+  }, [timerId, isAllPlayersGuessTheWord, timeRemaining, isDrawer, roundInfo.status]);
 
   const timerClass = useMemo(
     () =>

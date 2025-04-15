@@ -1,0 +1,116 @@
+.winnerWrap {
+  position: relative;
+  font-family: Nunito;
+  line-height: normal;
+
+  & > img {
+    width: 100%;
+  }
+}
+
+.firstPlace {
+  width: 35.5%;
+  min-width: 35.5%;
+  color: #fb6808;
+  paint-order: stroke fill;
+
+  & > .textWrap {
+    & > .playerName {
+      -webkit-text-stroke-width: 0.375rem;
+      -webkit-text-stroke-color: #fafaff;
+      font-size: 2.375rem;
+    }
+
+    & > .playerPoints {
+      -webkit-text-stroke-width: 0.125rem;
+      -webkit-text-stroke-color: #fff;
+      font-size: 1.75rem;
+    }
+  }
+}
+
+.secondPlace,
+.thirdPlace {
+  max-width: 30.85%;
+  flex-grow: 1;
+}
+
+.placeWrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  -webkit-text-stroke-color: #131841;
+  paint-order: stroke fill;
+  font-weight: 700;
+  /* line-height: 1; */
+  line-height: normal;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.firstPlace .placeWrap {
+  -webkit-text-stroke-width: 0.1875rem;
+  font-size: 1.75rem;
+  bottom: 17%;
+}
+
+:where(.secondPlace, .thirdPlace) .placeWrap {
+  -webkit-text-stroke-width: 0.17125rem;
+  font-size: 1.5rem;
+  bottom: 19%;
+}
+
+.secondPlace .textWrap {
+  color: #646464;
+}
+
+.thirdPlace .textWrap {
+  color: #c27664;
+}
+
+.textWrap {
+  position: absolute;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  width: 60%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.playerName {
+  font-weight: 800;
+  padding: 0 0.575rem 0 0.25rem;
+}
+
+.playerPoints {
+  font-weight: 900;
+}
+
+.playerName,
+.playerPoints {
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+:where(.secondPlace, .thirdPlace) .textWrap {
+  padding: 0 0.125rem 2.75rem 0;
+  font-size: 2rem;
+  paint-order: stroke fill;
+
+  & > .playerName {
+    -webkit-text-stroke-width: 0.3125rem;
+    -webkit-text-stroke-color: #fafaff;
+  }
+
+  & > .playerPoints {
+    font-size: 1.5rem;
+    -webkit-text-stroke-width: 0.1rem;
+    -webkit-text-stroke-color: #fff;
+  }
+}

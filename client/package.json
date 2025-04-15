@@ -10,16 +10,25 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
+    "@reduxjs/toolkit": "^2.6.1",
+    "axios": "^1.8.4",
     "classnames": "^2.5.1",
     "extended-eventsource": "^2.1.0",
+    "graphql-ws": "^6.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.55.0",
     "react-konva": "^19.0.2",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.1.5",
+    "react-select": "^5.10.1",
+    "react-toastify": "^11.0.5",
     "react-usestateref": "^1.0.9",
-    "timesync": "^1.0.11",
+    "redux": "^5.0.1",
     "uuid": "^11.0.5",
-    "vite-plugin-svgr": "^4.3.0"
+    "vite-plugin-svgr": "^4.3.0",
+    "yup": "^1.6.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

@@ -9,12 +9,14 @@ export type HeaderPropsType = {
   drawTime: number;
   roundInfo: RoundType;
   isDrawer: boolean;
+  isCurrentUserGuessTheWord: boolean;
 };
 
 const Header: React.FC<HeaderPropsType> = ({
   drawTime,
   roundInfo,
   isDrawer,
+  isCurrentUserGuessTheWord,
 }) => {
   return (
     <header className={styles.headerWrap}>
@@ -25,7 +27,7 @@ const Header: React.FC<HeaderPropsType> = ({
         <WordArea
           roundInfo={roundInfo}
           isDrawer={isDrawer}
-          isCurrentUserGuessTheWord={false}
+          isCurrentUserGuessTheWord={isCurrentUserGuessTheWord}
         />
       </div>
       <div className={styles.curRoundWrap}>

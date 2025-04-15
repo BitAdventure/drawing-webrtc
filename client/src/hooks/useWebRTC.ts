@@ -1,9 +1,12 @@
-import { useCallback, useRef } from "react";
-import useStateRef from "react-usestateref";
+import { useCallback, useEffect, useRef } from "react";
 import { WebRTCService } from "../services/webrtc";
-import { ConnectionState } from "../constants/enums";
+import { ConnectionState, EventStatuses, RoundStatuses } from "../constants/enums";
 import { ICE_GATHERING_TIMEOUT, RTC_CONFIG } from "../constants/constants";
-import { EventData, RelayFunction, UserPeerData } from "../constants/types";
+import { EventInfoType, RelayFunction, RoundType, UserPeerData } from "../constants/types";
+import { useSelector } from "./useSelector";
+import { useActions } from "./useActions";
+import { BREAKOUT_ROOM, RESULTS } from "@/constants/routes";
+import { useNavigate } from "react-router-dom";
 
 interface UseWebRTCParams {
   token: string;
@@ -14,8 +17,8 @@ interface UseWebRTCParams {
 interface UseWebRTCReturn {
   userPeerData: React.RefObject<UserPeerData>;
   webRTCService: WebRTCService | null;
-  eventData: EventData | null;
-  setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
+  currentRound: RoundType | null;
+  eventInfo: EventInfoType | null;
   addPeer: (data: any) => Promise<void>;
   removePeer: (data: any) => void;
   sessionDescription: (data: any) => Promise<void>;
@@ -25,14 +28,11 @@ interface UseWebRTCReturn {
   clearAllPeers: () => void;
 }
 
-export const useWebRTC = ({
-  token,
-  eventId,
-  relay,
-}: UseWebRTCParams): UseWebRTCReturn => {
-  const [eventData, setEventData, eventDataRef] = useStateRef<EventData | null>(
-    null
-  );
+export const useWebRTC = ({ token, eventId, relay }: UseWebRTCParams): UseWebRTCReturn => {
+  const navigate = useNavigate();
+  const { updateLines } = useActions();
+  const eventInfo = useSelector((state) => state.game.eventInfo);
+  const currentRound = useSelector((state) => state.game.currentRound);
 
   const userPeerData = useRef<UserPeerData>({
     peers: {},
@@ -46,37 +46,37 @@ export const useWebRTC = ({
   // Service reference
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
+  useEffect(() => {
+    if (
+      eventInfo?.status === EventStatuses.COMPLETED ||
+      (currentRound &&
+        eventInfo?.gameInformation.totalRounds &&
+        currentRound.index === eventInfo.gameInformation.totalRounds - 1 &&
+        currentRound.status === RoundStatuses.COMPLETED)
+    ) {
+      navigate(`/${eventId}/${RESULTS}`);
+    } else if (eventInfo?.status === EventStatuses.UPCOMING) navigate(`/${eventId}/${BREAKOUT_ROOM}`);
+  }, [currentRound, eventInfo?.gameInformation, eventId, navigate, eventInfo?.status]);
+
   // Update connection state
-  const updatePeerConnectionState = useCallback(
-    (peerId: string, state: ConnectionState) => {
-      userPeerData.current.connectionState[peerId] = state;
-    },
-    []
-  );
+  const updatePeerConnectionState = useCallback((peerId: string, state: ConnectionState) => {
+    userPeerData.current.connectionState[peerId] = state;
+  }, []);
 
   // Handle peer data
   const onPeerData = useCallback(
     (peerId: string, data: any) => {
       try {
         const msg = JSON.parse(data);
-        console.log(msg);
+
         switch (msg.event) {
           case "lines":
-            eventDataRef.current &&
-              setEventData({
-                ...eventDataRef.current,
-                roundInfo: {
-                  ...eventDataRef.current.roundInfo,
-                  lines: msg.data,
-                },
-              });
+            updateLines(msg.data.lines);
             break;
           case "ping": {
             const channel = userPeerData.current.channels[peerId];
             if (channel && channel.readyState === "open") {
-              channel.send(
-                JSON.stringify({ event: "pong", timestamp: Date.now() })
-              );
+              channel.send(JSON.stringify({ event: "pong", timestamp: Date.now() }));
             }
             break;
           }
@@ -85,7 +85,7 @@ export const useWebRTC = ({
         console.error("Error processing peer data:", error);
       }
     },
-    [eventDataRef, setEventData]
+    [updateLines]
   );
 
   // Create offer
@@ -98,14 +98,10 @@ export const useWebRTC = ({
         await peer.setLocalDescription(offer);
         relay(peerId, "session-description", offer);
 
-        iceTimeoutsRef.current[peerId] &&
-          clearTimeout(iceTimeoutsRef.current[peerId]);
+        iceTimeoutsRef.current[peerId] && clearTimeout(iceTimeoutsRef.current[peerId]);
 
         iceTimeoutsRef.current[peerId] = setTimeout(() => {
-          if (
-            userPeerData.current.connectionState[peerId] !==
-            ConnectionState.CONNECTED
-          ) {
+          if (userPeerData.current.connectionState[peerId] !== ConnectionState.CONNECTED) {
             console.warn(`ICE gathering timed out for peer ${peerId}`);
             handlePeerDisconnect(peerId);
           }
@@ -126,10 +122,7 @@ export const useWebRTC = ({
 
       // Don't immediately disconnect on ICE errors - check if we have any working candidates
       const peer = peerData.peers[peerId];
-      if (
-        peer?.iceConnectionState === "connected" ||
-        peer?.iceConnectionState === "completed"
-      ) {
+      if (peer?.iceConnectionState === "connected" || peer?.iceConnectionState === "completed") {
         // If we're already connected, don't disconnect based on individual ICE errors
         console.log(`Ignoring disconnect request for connected peer ${peerId}`);
         return;
@@ -144,9 +137,7 @@ export const useWebRTC = ({
       peerData.reconnectAttempts[peerId]++;
 
       if (peerData.reconnectAttempts[peerId] <= 3) {
-        console.log(
-          `Attempting to reconnect to peer ${peerId}, attempt ${peerData.reconnectAttempts[peerId]}`
-        );
+        console.log(`Attempting to reconnect to peer ${peerId}, attempt ${peerData.reconnectAttempts[peerId]}`);
 
         if (peerData.peers[peerId]) {
           // Don't close existing connection immediately - try to renegotiate first
@@ -158,10 +149,7 @@ export const useWebRTC = ({
 
               // Try creating a new offer after ICE restart
               return setTimeout(() => {
-                if (
-                  peerData.peers[peerId] &&
-                  peerData.peers[peerId].signalingState === "stable"
-                ) {
+                if (peerData.peers[peerId] && peerData.peers[peerId].signalingState === "stable") {
                   createOffer(peerId, peerData.peers[peerId]);
                 }
               }, 1000);
@@ -188,9 +176,7 @@ export const useWebRTC = ({
       let consecutiveFailures = 0;
 
       peer.oniceconnectionstatechange = () => {
-        console.log(
-          `ICE connection state for ${peerId}: ${peer.iceConnectionState}`
-        );
+        console.log(`ICE connection state for ${peerId}: ${peer.iceConnectionState}`);
 
         switch (peer.iceConnectionState) {
           case "connected":
@@ -214,10 +200,7 @@ export const useWebRTC = ({
                 console.log(`Attempting ICE restart for peer ${peerId}`);
                 peer.restartIce();
               } catch (error) {
-                console.error(
-                  `Error during ICE restart for peer ${peerId}:`,
-                  error
-                );
+                console.error(`Error during ICE restart for peer ${peerId}:`, error);
                 handlePeerDisconnect(peerId);
               }
             }
@@ -227,16 +210,11 @@ export const useWebRTC = ({
             // as it might recover automatically
             setTimeout(() => {
               if (peer.iceConnectionState === "disconnected") {
-                console.log(
-                  `Peer ${peerId} still disconnected after delay, attempting restart`
-                );
+                console.log(`Peer ${peerId} still disconnected after delay, attempting restart`);
                 try {
                   peer.restartIce();
                 } catch (error) {
-                  console.error(
-                    `Error during ICE restart for peer ${peerId}:`,
-                    error
-                  );
+                  console.error(`Error during ICE restart for peer ${peerId}:`, error);
                   handlePeerDisconnect(peerId);
                 }
               }
@@ -291,20 +269,14 @@ export const useWebRTC = ({
 
   // Initialize WebRTC service
   if (!webRTCServiceRef.current && token && eventId) {
-    webRTCServiceRef.current = new WebRTCService(
-      userPeerData,
-      iceTimeoutsRef,
-      RTC_CONFIG,
-      relay,
-      {
-        onPeerData,
-        updatePeerConnectionState,
-        createOffer,
-        handlePeerDisconnect,
-        setupPeerConnectionListeners,
-        setupDataChannelListeners,
-      }
-    );
+    webRTCServiceRef.current = new WebRTCService(userPeerData, iceTimeoutsRef, RTC_CONFIG, relay, {
+      onPeerData,
+      updatePeerConnectionState,
+      createOffer,
+      handlePeerDisconnect,
+      setupPeerConnectionListeners,
+      setupDataChannelListeners,
+    });
   }
 
   // Add peer
@@ -336,10 +308,7 @@ export const useWebRTC = ({
     try {
       const message = JSON.parse(data.data);
       if (webRTCServiceRef.current) {
-        await webRTCServiceRef.current.handleSessionDescription(
-          message.peer.id,
-          message.data
-        );
+        await webRTCServiceRef.current.handleSessionDescription(message.peer.id, message.data);
       }
     } catch (error) {
       console.error("Error handling session description:", error);
@@ -351,10 +320,7 @@ export const useWebRTC = ({
     try {
       const message = JSON.parse(event.data);
       if (webRTCServiceRef.current) {
-        await webRTCServiceRef.current.addIceCandidate(
-          message.peer.id,
-          message.data
-        );
+        await webRTCServiceRef.current.addIceCandidate(message.peer.id, message.data);
       }
     } catch (error) {
       console.error("Error handling ICE candidate:", error);
@@ -371,8 +337,8 @@ export const useWebRTC = ({
   return {
     userPeerData,
     webRTCService: webRTCServiceRef.current,
-    eventData,
-    setEventData,
+    currentRound,
+    eventInfo,
     addPeer,
     removePeer,
     sessionDescription,

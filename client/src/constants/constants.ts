@@ -1,5 +1,4 @@
 export const MAX_ROUNDS = 8;
-export const DRAW_TIME = 75;
 export const RECONNECT_TIMEOUT = 5000;
 export const ICE_GATHERING_TIMEOUT = 10000;
 export const MAX_RECONNECT_ATTEMPTS = 3;
@@ -22,5 +21,3 @@ export const RTC_CONFIG: RTCConfiguration = {
   ],
   iceCandidatePoolSize: 10, // Add candidate pool for faster connections
 };
-
-export const ServerURL = import.meta.env.VITE_SERVER_URL || "";

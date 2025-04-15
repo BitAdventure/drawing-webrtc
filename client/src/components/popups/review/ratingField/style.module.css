@@ -1,0 +1,28 @@
+.fieldWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: Nunito;
+}
+
+.starsWrap {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.star {
+  width: 4.375rem;
+  height: auto;
+  cursor: pointer;
+}

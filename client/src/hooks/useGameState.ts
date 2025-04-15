@@ -1,83 +1,88 @@
 import { useCallback, useMemo, useState } from "react";
-import { EventData, RoundType, UserData } from "../constants/types";
-import { ServerURL } from "@/constants/constants";
+import { AnswerResultType, MessageType, RoundType, WordType } from "../constants/types";
+import { useAuth } from "./useAuth";
+import { Config } from "@/services/config";
 
 interface UseGameStateParams {
   eventId: string | undefined;
-  userData: UserData | null;
-  eventData: EventData | null;
-  setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
+  currentRound: RoundType | null;
   token: string;
-  timeDifference: number;
 }
 
 interface UseGameStateReturn {
   isDrawer: boolean;
-  handleStartGame: () => void;
-  startGameLoading: boolean;
+  handleSelectWord: (word: WordType) => void;
+  handleNewMessage: (message: MessageType) => void;
+  showAnswerResult: AnswerResultType;
 }
 
-export const useGameState = ({
-  eventId,
-  userData,
-  eventData,
-  setEventData,
-  token,
-  timeDifference,
-}: UseGameStateParams): UseGameStateReturn => {
+export const useGameState = ({ eventId, currentRound, token }: UseGameStateParams): UseGameStateReturn => {
+  const { currentUser } = useAuth();
   // Check if current user is drawer
   const isDrawer = useMemo(
-    () => eventData?.roundInfo.drawerId === userData?.staticId,
-    [eventData?.roundInfo.drawerId, userData?.staticId]
+    () => !!currentUser && currentUser.metadata.playerId === currentRound?.drawer.id,
+    [currentUser, currentRound]
   );
-  const [startGameLoading, setStartGameLoading] = useState(false);
+  const [showAnswerResult, setShowAnswerResult] = useState<AnswerResultType>(null);
 
   // Handle start game
-  const handleStartGame = useCallback(async () => {
-    if (!eventId || startGameLoading) return;
+  const handleSelectWord = useCallback(
+    async (word: WordType) => {
+      if (!eventId) return;
 
-    setStartGameLoading(true);
+      try {
+        await fetch(`${Config.SERVER_URL}/updateEvent/${eventId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            event: "start-round",
+            data: {
+              roundId: currentRound?.id,
+              word,
+            },
+          }),
+        });
+      } catch (error) {
+        console.error("Error in start game:", error);
+      }
+    },
+    [currentRound?.id, eventId, token]
+  );
 
-    try {
-      await fetch(`${ServerURL}/updateEvent/${eventId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          event: "start-round",
-        }),
-      })
-        .then((res) => res.json())
-        .then(
-          ({
-            startTime,
-            ...res
-          }: Pick<RoundType, "startTime" | "status" | "word">) => {
-            setEventData(
-              (prev) =>
-                prev && {
-                  ...prev,
-                  roundInfo: {
-                    ...prev.roundInfo,
-                    ...res,
-                    startTime: startTime + timeDifference,
-                  },
-                }
-            );
-          }
-        );
-    } catch (error) {
-      console.error("Error in start game:", error);
-    } finally {
-      setStartGameLoading(false);
-    }
-  }, [eventId, setEventData, startGameLoading, token, timeDifference]);
+  const handleNewMessage = useCallback(
+    async (message: MessageType) => {
+      try {
+        await fetch(`${Config.SERVER_URL}/updateEvent/${eventId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            event: "new-message",
+            data: message,
+          }),
+        });
+      } catch (error) {
+        console.error("Error in start game:", error);
+      }
+
+      if (message.type !== "DEFAULT") return;
+      setShowAnswerResult(
+        currentRound?.word?.label.toLowerCase().trim() === message.text.toLowerCase().trim() ? "correct" : "wrong"
+      );
+      setTimeout(() => setShowAnswerResult(null), 3000);
+    },
+    [currentRound?.word?.label, eventId, token]
+  );
 
   return {
     isDrawer,
-    handleStartGame,
-    startGameLoading,
+    handleSelectWord,
+    handleNewMessage,
+    showAnswerResult,
   };
 };

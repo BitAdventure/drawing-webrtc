@@ -1,0 +1,15 @@
+.categoryWrap {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-start;
+  font-size: 1.125rem;
+  color: #fff;
+  font-family: Nunito;
+  font-weight: 700;
+}
+
+.label {
+  cursor: pointer;
+}

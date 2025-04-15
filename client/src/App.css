@@ -3,7 +3,6 @@
   margin: 0 auto;
   padding: 0;
   display: flex;
-  flex-flow: column nowrap;
   flex-grow: 1;
   height: 100%;
 }

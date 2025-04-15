@@ -1,20 +1,19 @@
 import { useCallback, useRef } from "react";
 import { EventSourceService } from "../services/eventsource";
-import { EventData, UserData, WordType } from "../constants/types";
-import { RECONNECT_TIMEOUT, ServerURL } from "../constants/constants";
-import { RoundStatuses } from "../constants/enums";
+import { EventInfoType, RoundResults, RoundType } from "../constants/types";
+import { RECONNECT_TIMEOUT } from "../constants/constants";
+import { useActions } from "./useActions";
+import { Config } from "@/services/config";
+import { EventStatuses } from "@/constants/enums";
 
 interface UseEventSourceParams {
   token: string;
   eventId: string | undefined;
-  setUserData: React.Dispatch<React.SetStateAction<UserData | null>>;
-  setEventData: React.Dispatch<React.SetStateAction<EventData | null>>;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   addPeer: (data: any) => Promise<void>;
   removePeer: (data: any) => void;
   sessionDescription: (data: any) => Promise<void>;
   iceCandidate: (data: any) => Promise<void>;
-  timeDifference: number;
 }
 
 interface UseEventSourceReturn {
@@ -27,25 +26,23 @@ interface UseEventSourceReturn {
 export const useEventSource = ({
   token,
   eventId,
-  setUserData,
-  setEventData,
   setLoading,
   addPeer,
   removePeer,
   sessionDescription,
   iceCandidate,
-  timeDifference,
 }: UseEventSourceParams): UseEventSourceReturn => {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const eventSourceServiceRef = useRef<EventSourceService | null>(null);
+  const { updateStoreEventInfo, updatePartialCurrentRound, updateCurrentRound, updateRoundResults } = useActions();
 
   // Join game
   const join = useCallback(async () => {
     if (!token || !eventId) return;
 
     try {
-      const response = await fetch(`${ServerURL}/${eventId}/join`, {
+      const response = await fetch(`${Config.SERVER_URL}/${eventId}/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -91,82 +88,73 @@ export const useEventSource = ({
   const handleJoin = useCallback(
     async (event: any) => {
       try {
-        console.log("USER ID: ", JSON.parse(event.data).user.id);
-        setUserData(JSON.parse(event.data).user);
+        console.log("USER ID ON JOIN: ", JSON.parse(event.data).user.id);
+        // setUserData(JSON.parse(event.data).user);
         await join();
       } catch (error) {
         console.error("Error handling join:", error);
         scheduleReconnect();
       }
     },
-    [join, scheduleReconnect, setUserData]
+    [join, scheduleReconnect]
   );
 
   // Handle complete join
   const handleCompleteJoin = useCallback(
     async (event: any) => {
       try {
-        const rawEventData = JSON.parse(event.data);
-        setEventData({
-          ...rawEventData,
-          roundInfo: {
-            ...rawEventData.roundInfo,
-            startTime:
-              rawEventData.roundInfo.startTime &&
-              rawEventData.roundInfo.startTime + timeDifference,
-          },
-        });
-        setLoading(false);
+        // maybe this logic should be in event-data event listener
+        if (event) {
+          const rawEventData = JSON.parse(event.data);
+          updateStoreEventInfo({
+            eventInfo: rawEventData,
+            withRoundsUpdate: true,
+          });
+          rawEventData?.status !== EventStatuses.COMPLETED && setLoading(false);
+        }
       } catch (error) {
         console.error("Error completing join:", error);
         scheduleReconnect();
       }
     },
-    [scheduleReconnect, setEventData, setLoading, timeDifference]
+    // eslint-disable-next-line
+    [scheduleReconnect, setLoading]
   );
 
-  // Handle start round
-  const handleStartRound = useCallback(
-    (event: any) => {
-      const {
-        startTime,
-        ...updates
-      }: {
-        status: RoundStatuses;
-        startTime: number;
-        word: WordType;
-      } = JSON.parse(event.data);
+  const handleUpdateEventInfo = useCallback((event: any) => {
+    const newEventInfo: EventInfoType = JSON.parse(event.data);
+    console.log("UPDATE EVENT INFO", newEventInfo);
+    if (event) {
+      const rawEventData = JSON.parse(event.data);
+      updateStoreEventInfo({
+        eventInfo: rawEventData,
+        withRoundsUpdate: true,
+      });
+      rawEventData?.status !== EventStatuses.COMPLETED && setLoading(false);
+    }
+    // eslint-disable-next-line
+  }, []);
 
-      updates &&
-        setEventData((prevData) => {
-          if (!prevData) return null;
-          return {
-            ...prevData,
-            roundInfo: {
-              ...prevData.roundInfo,
-              ...updates,
-              startTime: startTime + timeDifference,
-            },
-          };
-        });
-    },
-    [setEventData, timeDifference]
-  );
+  const handleUpdateCurrentRound = useCallback((event: any) => {
+    const currentRoundInfo: RoundType = JSON.parse(event.data);
 
-  // Handle finish round
-  const handleFinishRound = useCallback(() => {
-    setEventData((prevData) => {
-      if (!prevData) return null;
+    updateCurrentRound(currentRoundInfo);
+    // eslint-disable-next-line
+  }, []);
 
-      return {
-        ...prevData,
-        roundInfo: {
-          ...prevData.roundInfo,
-          status: RoundStatuses.SHOW_RESULT,
-        },
-      };
-    });
-  }, [setEventData]);
+  const handleUpdatePartialRound = useCallback((event: any) => {
+    const currentRoundPartialInfo: Partial<RoundType> = JSON.parse(event.data);
+    console.log("UPDATE ROUND: ", currentRoundPartialInfo);
+    updatePartialCurrentRound(currentRoundPartialInfo);
+    // eslint-disable-next-line
+  }, []);
+
+  const handleUpdateRoundResults = useCallback((event: any) => {
+    const payload: { roundResults: RoundResults } = JSON.parse(event.data);
+    console.log("SHOW RESULTS: ", payload);
+    updateRoundResults(payload);
+    // eslint-disable-next-line
+  }, []);
 
   // Handle event source error
   const handleEventSourceError = useCallback(
@@ -191,8 +179,12 @@ export const useEventSource = ({
           iceCandidate,
           handleJoin,
           handleCompleteJoin,
-          handleStartRound,
-          handleFinishRound,
+          handleUpdateEventInfo,
+          handleUpdateCurrentRound,
+          handleUpdatePartialRound,
+          handleUpdateRoundResults,
+          // handleStartRound,
+          // handleFinishRound,
           handleEventSourceError,
         },
         token,
@@ -210,8 +202,10 @@ export const useEventSource = ({
     iceCandidate,
     handleJoin,
     handleCompleteJoin,
-    handleStartRound,
-    handleFinishRound,
+    handleUpdateEventInfo,
+    handleUpdateCurrentRound,
+    handleUpdatePartialRound,
+    handleUpdateRoundResults,
     handleEventSourceError,
   ]);
 

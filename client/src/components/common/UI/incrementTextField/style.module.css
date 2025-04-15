@@ -1,0 +1,62 @@
+.componentWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+  font-family: Nunito;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.label {
+  color: #fff;
+}
+
+.fieldWrap {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.decrementBtn,
+.incrementBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 1rem;
+  overflow: hidden;
+
+  & > svg {
+    width: 1.5rem;
+    height: auto;
+  }
+}
+
+.decrementBtn {
+  background: #f9584a;
+}
+
+.incrementBtn {
+  background: #34a94d;
+}
+
+.valueContainer {
+  width: 4.5rem;
+  height: 3.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 1rem;
+  background: #fff;
+  color: #37789e;
+  font-size: 1.125rem;
+  font-weight: inherit;
+}

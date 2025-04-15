@@ -1,0 +1,59 @@
+.formTextField {
+  position: relative;
+  display: flex;
+  flex-flow: column nowrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+  width: 100%;
+  font-family: Nunito;
+  font-weight: 700;
+}
+
+.label {
+  font-size: 1.5rem;
+  line-height: 1.375;
+  transition: color 0.15s ease-in-out;
+}
+
+.label.isError {
+  color: var(--primary-red);
+}
+
+.inputWrap {
+  position: relative;
+  width: 100%;
+  padding: 0.9375rem;
+  border-radius: 1rem;
+  background: #fff;
+  color: #42476d;
+  border: 0.125rem solid #42476d;
+  background: #fff;
+  transition: border-color 0.15s ease-in-out;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  font-weight: inherit;
+}
+
+.inputWrap.isDisabled,
+.inputWrap.isDisabled > :where(input, textarea) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.inputWrap.isError {
+  border-color: var(--primary-red);
+}
+
+.inputWrap > :where(input, textarea) {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1;
+  width: 100%;
+  resize: none;
+  font-weight: inherit;
+}
+
+.inputWrap > :where(input, textarea)::placeholder {
+  opacity: 0.5;
+}

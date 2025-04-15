@@ -1,0 +1,17 @@
+.podiumWrap {
+  position: relative;
+  width: 100%;
+}
+
+.placesWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: flex-end;
+  gap: 1rem;
+
+  &.isOneElement {
+    justify-content: center;
+  }
+}

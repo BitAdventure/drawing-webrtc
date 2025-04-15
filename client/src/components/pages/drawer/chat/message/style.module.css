@@ -1,0 +1,59 @@
+.messageWrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.leftSideGroup {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+}
+
+.playerName {
+  font-size: 1.25rem;
+  line-height: 1.35;
+  color: #d81e5b;
+  font-family: Nunito;
+  font-weight: 700;
+}
+
+.messageText {
+  max-width: 100%;
+  white-space: wrap;
+  font-size: 0.9175rem;
+  line-height: 1.35;
+  font-family: ShantellSans;
+  font-weight: 500;
+  color: #000;
+}
+
+.iconWrap {
+  min-width: 1.85rem;
+  width: 1.85rem;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  & > svg {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.correctAnswerMessage {
+  color: #b6a510;
+  font-family: Nunito;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.1;
+}

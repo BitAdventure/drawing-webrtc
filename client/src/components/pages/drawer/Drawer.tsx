@@ -1,46 +1,40 @@
-import { useCallback, useEffect, useState } from "react";
-import AppLoader from "@/components/common/UI/appLoader/AppLoader";
-import TestDrawArea from "./drawArea/DrawArea";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Header from "./header/Header";
-import {
-  DRAW_TIME,
-  HEARTBEAT_INTERVAL,
-  ServerURL,
-} from "@/constants/constants";
+import { HEARTBEAT_INTERVAL } from "@/constants/constants";
 import { useParams } from "react-router-dom";
-import { UserData } from "@/constants/types";
 import { ConnectionState } from "@/constants/enums";
 import { useWebRTC } from "@/hooks/useWebRTC";
 import useMountEffect from "@/hooks/useMountEffect";
 import { useEventSource } from "@/hooks/useEventSource";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useGameState } from "@/hooks/useGameState";
-import { v4 as uuidv4 } from "uuid";
+import { useAuth } from "@/hooks/useAuth";
+import DrawArea from "./drawArea/DrawArea";
+import PlayersPanel from "./playersPanel/PlayersPanel";
+import Chat from "./chat/Chat";
+import { useSelector } from "@/hooks/useSelector";
+import { useActions } from "@/hooks/useActions";
 
 import styles from "./style.module.css";
+import { Config } from "@/services/config";
 
-type PropsType = {
-  timeDifference: number;
-};
-
-const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
-  const { id } = useParams();
+const Drawer: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string>("");
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const { id } = useParams();
+  const { currentUser } = useAuth();
+  const webRTCToken = useSelector((state) => state.auth.webRTCToken);
+  const { setWebRTCToken } = useActions();
 
   // Get token
   const getToken = useCallback(async () => {
-    const userId: string = localStorage.getItem("webRTCUserId") || uuidv4();
-
     try {
-      const res = await fetch(`${ServerURL}/access`, {
+      const res = await fetch(`${Config.SERVER_URL}/access`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id: userId,
+          id: currentUser?.metadata.playerId,
         }),
       });
 
@@ -49,12 +43,11 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
       }
 
       const { token } = await res.json();
-      localStorage.setItem("webRTCUserId", userId);
-      setToken(token);
+      setWebRTCToken(token);
     } catch (error) {
-      console.error("Error getting token:", error);
-      return;
+      return console.error("Error getting token:", error);
     }
+    // eslint-disable-next-line
   }, []);
 
   useMountEffect(() => {
@@ -65,11 +58,11 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
   const relay = useCallback(
     async (peerId: string, event: string, data: any) => {
       try {
-        const response = await fetch(`${ServerURL}/relay/${peerId}/${event}`, {
+        const response = await fetch(`${Config.SERVER_URL}/relay/${peerId}/${event}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${webRTCToken}`,
           },
           body: JSON.stringify(data),
         });
@@ -83,15 +76,15 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
       }
     },
     // eslint-disable-next-line
-    [token]
+    [webRTCToken]
   );
 
   // Initialize WebRTC
   const {
     userPeerData,
     webRTCService,
-    eventData,
-    setEventData,
+    currentRound,
+    eventInfo,
     addPeer,
     removePeer,
     sessionDescription,
@@ -99,32 +92,24 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
     updatePeerConnectionState,
     handlePeerDisconnect,
     clearAllPeers,
-  } = useWebRTC({ token, eventId: id, relay });
+  } = useWebRTC({ token: webRTCToken, eventId: id, relay });
 
   // Initialize EventSource
-  const {
-    eventSourceRef,
-    reconnectTimeoutRef,
-    setupEventSource,
-    scheduleReconnect,
-  } = useEventSource({
-    token,
+  const { eventSourceRef, reconnectTimeoutRef, setupEventSource, scheduleReconnect } = useEventSource({
+    token: webRTCToken,
     eventId: id,
-    setUserData,
-    setEventData,
     setLoading,
     addPeer,
     removePeer,
     sessionDescription,
     iceCandidate,
-    timeDifference,
   });
 
   // Initialize broadcast
   const { broadcast } = useBroadcast({
     webRTCService,
     eventId: id,
-    token,
+    token: webRTCToken,
   });
 
   // Setup event source and cleanup
@@ -143,21 +128,13 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
         const peer = userPeerData.current.peers[peerId];
         const channel = userPeerData.current.channels[peerId];
         console.log("PEER ICE CONNECTION STATE: ", peer?.iceConnectionState);
-        console.log(
-          "CHANNEL READY STATE: ",
-          channel?.readyState,
-          userPeerData.current.channels,
-          peerId
-        );
+        console.log("CHANNEL READY STATE: ", channel?.readyState, userPeerData.current.channels, peerId);
         (peer?.iceConnectionState === "disconnected" ||
           peer?.iceConnectionState === "failed" ||
           peer?.iceConnectionState === "closed") &&
           handlePeerDisconnect(peerId);
 
-        channel?.readyState === "open" &&
-          channel.send(
-            JSON.stringify({ event: "heartbeat", timestamp: Date.now() })
-          );
+        channel?.readyState === "open" && channel.send(JSON.stringify({ event: "heartbeat", timestamp: Date.now() }));
       });
     }, HEARTBEAT_INTERVAL);
 
@@ -188,88 +165,54 @@ const Drawer: React.FC<PropsType> = ({ timeDifference }) => {
     reconnectTimeoutRef,
   ]);
 
-  const { isDrawer, handleStartGame, startGameLoading } = useGameState({
+  const { isDrawer, handleSelectWord, handleNewMessage, showAnswerResult } = useGameState({
     eventId: id,
-    userData,
-    eventData,
-    setEventData,
-    token,
-    timeDifference,
+    currentRound,
+    token: webRTCToken,
   });
 
-  const handleResetStorage = useCallback(() => {
-    localStorage.removeItem("webRTCUserId");
-    window.location.reload();
-  }, []);
-
-  return loading || !eventData ? (
-    <AppLoader />
-  ) : (
-    <div className={styles.contentWrap}>
-      <Header
-        drawTime={DRAW_TIME}
-        roundInfo={eventData.roundInfo}
-        isDrawer={isDrawer}
-      />
-      <main className={styles.mainAreaWrap}>
-        <TestDrawArea
-          handleStartGame={handleStartGame}
-          startGameLoading={startGameLoading}
-          broadcast={broadcast}
-          isDrawer={isDrawer}
-          roundInfo={eventData.roundInfo}
-        />
-        <button
-          type="button"
-          style={{
-            position: "absolute",
-            right: 0,
-            bottom: 0,
-            border: "1px solid #D9D9D9",
-            padding: ".25rem .5rem",
-            fontSize: "1.5rem",
-          }}
-          onClick={handleResetStorage}
-        >
-          RESET STORAGE
-        </button>
-      </main>
-    </div>
+  const isCurrentUserGuessTheWord = useMemo(
+    () =>
+      !!currentRound &&
+      !isDrawer &&
+      !!currentRound.messages.find(
+        (message) =>
+          message.text.toLowerCase().trim() === currentRound.word?.label.toLowerCase().trim() &&
+          currentUser?.metadata.playerId === message.player.id
+      ),
+    [currentUser?.metadata?.playerId, currentRound, isDrawer]
   );
+
+  return loading
+    ? null
+    : !!currentRound && !!eventInfo && currentUser && (
+        <div className={styles.contentWrap}>
+          <Header
+            drawTime={eventInfo.gameInformation.drawTime}
+            roundInfo={currentRound}
+            isDrawer={isDrawer}
+            isCurrentUserGuessTheWord={isCurrentUserGuessTheWord}
+          />
+          <main className={styles.mainAreaWrap}>
+            <PlayersPanel />
+            <DrawArea
+              roundInfo={currentRound}
+              isDrawer={isDrawer}
+              showAnswerResult={showAnswerResult}
+              handleSelectWord={handleSelectWord}
+              createMessage={handleNewMessage}
+              currentUser={currentUser}
+              broadcast={broadcast}
+            />
+            <Chat
+              currentRound={currentRound}
+              handleNewMessage={handleNewMessage}
+              isCurrentUserGuessTheWord={isCurrentUserGuessTheWord}
+              currentUser={currentUser}
+            />
+          </main>
+        </div>
+      );
 };
 
 export default Drawer;
-// import AppLoader from "../../common/UI/appLoader/AppLoader";
-// import TestDrawArea from "./drawArea/DrawArea";
-// import Header from "./header/Header";
-// import { DRAW_TIME } from "../../../constants/constants";
-// import useWebRTC from "../../../hooks/useWebRTC";
-
-// import styles from "./style.module.css";
-
-// const Drawer: React.FC = () => {
-//   const { loading, handleStartGame, isDrawer, eventData, broadcast } =
-//     useWebRTC();
-
-//   return loading || !eventData ? (
-//     <AppLoader />
-//   ) : (
-//     <div className={styles.contentWrap}>
-//       <Header
-//         drawTime={DRAW_TIME}
-//         roundInfo={eventData.roundInfo}
-//         isDrawer={isDrawer}
-//       />
-//       <main className={styles.mainAreaWrap}>
-//         <TestDrawArea
-//           handleStartGame={handleStartGame}
-//           broadcast={broadcast}
-//           isDrawer={isDrawer}
-//           roundInfo={eventData.roundInfo}
-//         />
-//       </main>
-//     </div>
-//   );
-// };
-
-// export default Drawer;

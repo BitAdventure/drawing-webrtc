@@ -9,9 +9,15 @@ import { initializeRedisClient, redisOptions } from "./redisClient.js";
 import cors from "cors";
 import { RoundStatuses, ClientStatuses } from "./enums.js";
 import { Job, Queue, Worker } from "bullmq";
-import { EventData, RoundInfo, TimersMap } from "./types.js";
+import { Event, Round, StartRoundUpdates, Team, TimersMap } from "./types.js";
+import { getEventInfo } from "api.js";
+import {
+  AUTO_PICK_WORD_PREFIX,
+  createEventInitialState,
+  handleProcessRoundResults,
+  handleStartRound,
+} from "utils.js";
 
-const DRAW_TIME = 75;
 const HEARTBEAT_INTERVAL = 10000;
 const PEER_TIMEOUT = 60000;
 
@@ -27,12 +33,12 @@ app.use(express.static(path.join(__dirname, "static")));
 
 const server = http.createServer(app);
 const clients: any = {};
+const workers: { [key: string]: Worker } = {};
 const serverState: {
-  [key: string]: EventData;
+  [key: string]: Event;
 } = {};
-const timers: TimersMap = {};
+const timersMap: TimersMap = {};
 const clientIntervals: TimersMap = {};
-// const disconnectionTimers: TimersMap = {};
 const pendingIceCandidates: { [key: string]: Array<any> } = {};
 
 const redisClient = await initializeRedisClient();
@@ -78,17 +84,6 @@ async function markClientStatus(
     await updatePeerPresence(client.id, status === ClientStatuses.CONNECTED);
   } catch (error: any) {
     console.error(`Error marking client as ${status}: ${error.message}`);
-  }
-}
-
-async function isClientConnected(clientId: string): Promise<boolean> {
-  try {
-    const key = `client:status:${clientId}`;
-    const status = await redisClient.get(key);
-    return status === "connected";
-  } catch (error: any) {
-    console.error(`Error checking client connection status: ${error.message}`);
-    return false;
   }
 }
 
@@ -172,65 +167,6 @@ async function disconnected(client: any): Promise<void> {
   }
 }
 
-// async function disconnected(client: any): Promise<void> {
-//   console.log(`Client ${client.id} disconnected - starting grace period`);
-
-//   if (clientIntervals[client.id]) {
-//     clearInterval(clientIntervals[client.id]);
-//     delete clientIntervals[client.id];
-//   }
-
-//   if (disconnectionTimers[client.id]) {
-//     clearTimeout(disconnectionTimers[client.id]);
-//   }
-
-//   await markClientStatus(client, ClientStatuses.DISCONNECTED);
-
-//   disconnectionTimers[client.id] = setTimeout(async () => {
-//     console.log(
-//       `Grace period ended for client ${client.id} - cleaning up resources`
-//     );
-
-//     delete clients[client.id];
-//     delete disconnectionTimers[client.id];
-
-//     try {
-//       await redisClient.del(`messages:${client.id}`);
-
-//       const eventIds = await redisClient.sMembers(`${client.id}:channels`);
-//       await redisClient.del(`${client.id}:channels`);
-
-//       await Promise.all(
-//         eventIds.map(async (eventId: string) => {
-//           await redisClient.sRem(`channels:${eventId}`, client.id);
-//           const peerIds = await redisClient.sMembers(`channels:${eventId}`);
-
-//           const msg = JSON.stringify({
-//             event: "remove-peer",
-//             data: {
-//               peer: client.user,
-//               eventId,
-//             },
-//           });
-
-//           await Promise.all(
-//             peerIds.map(async (peerId: string) => {
-//               if (peerId !== client.id && (await isPeerAvailable(peerId))) {
-//                 await redisClient.publish(`messages:${peerId}`, msg);
-//               }
-//             })
-//           );
-//         })
-//       );
-
-//       await redisClient.del(`client:status:${client.id}`);
-//       await redisClient.del(`peer:presence:${client.id}`);
-//     } catch (error: any) {
-//       console.error(`Error during client cleanup: ${error.message}`);
-//     }
-//   }, RECONNECT_GRACE_PERIOD);
-// }
-
 function auth(req: any, res: any, next: any): void {
   let token: string | undefined;
   if (req.headers.authorization) {
@@ -242,16 +178,20 @@ function auth(req: any, res: any, next: any): void {
     return res.sendStatus(401);
   }
 
-  jwt.verify(token, process.env.TOKEN_SECRET || "", (err: any, user: any) => {
-    if (err) {
-      return res.sendStatus(403);
+  jwt.verify(
+    token,
+    process.env.HASURA_GRAPHQL_ADMIN_SECRET || "",
+    (err: any, user: any) => {
+      if (err) {
+        return res.sendStatus(403);
+      }
+      req.user = {
+        ...user,
+        id: token,
+      };
+      next();
     }
-    req.user = {
-      ...user,
-      id: token,
-    };
-    next();
-  });
+  );
 }
 
 app.post("/access", (req: any, res: any) => {
@@ -263,9 +203,8 @@ app.post("/access", (req: any, res: any) => {
     createdAt: new Date().toISOString(),
   };
 
-  const token = jwt.sign(user, process.env.TOKEN_SECRET || "", {
+  const token = jwt.sign(user, process.env.HASURA_GRAPHQL_ADMIN_SECRET || "", {
     expiresIn: "5 hours",
-    // expiresIn: "20 days",
   });
 
   return res.json({ token });
@@ -300,7 +239,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
   clients[client.id] = client;
   await markClientStatus(client, ClientStatuses.CONNECTED);
 
-  client.redis.subscribe(
+  await client.redis.subscribe(
     [`messages:${client.id}`, `messages:${eventId}`],
     (msg: any) => {
       try {
@@ -330,89 +269,50 @@ app.get("/connect", auth, async (req: any, res: any) => {
   });
 });
 
-// app.get("/connect", auth, async (req: any, res: any) => {
-//   const { eventId } = req.query;
-
-//   if (req.headers.accept !== "text/event-stream") {
-//     return res.sendStatus(404);
-//   }
-
-//   res.setHeader("Cache-Control", "no-cache");
-//   res.setHeader("Content-Type", "text/event-stream");
-//   res.setHeader("Access-Control-Allow-Origin", "*");
-//   res.flushHeaders();
-
-//   const client = {
-//     id: req.user.id,
-//     eventId,
-//     user: req.user,
-//     redis: pubSubRedisClient,
-//     emit: (event: string, data: any) => {
-//       res.write(`id: ${uuidv4()}\n`);
-//       res.write(`event: ${event}\n`);
-//       res.write(`data: ${JSON.stringify(data)}\n\n`);
-//     },
-//   };
-
-//   console.log(`Client ${client.id} connected`);
-
-//   if (disconnectionTimers[client.id]) {
-//     clearTimeout(disconnectionTimers[client.id]);
-//     delete disconnectionTimers[client.id];
-//     console.log(`Client ${client.id} reconnected within grace period`);
-//   }
-
-//   clients[client.id] = client;
-//   await markClientStatus(client, ClientStatuses.CONNECTED);
-
-//   client.redis.subscribe(
-//     [`messages:${client.id}`, `messages:${eventId}`],
-//     (msg: any) => {
-//       try {
-//         const { event, data } = JSON.parse(msg);
-//         client.emit(event, data);
-//       } catch (error: any) {
-//         console.error(`Error handling message: ${error.message}`);
-//       }
-//     }
-//   );
-
-//   client.emit("connected", { user: req.user });
-
-//   const heartbeatInterval = setInterval(() => {
-//     try {
-//       client.emit("ping", { timestamp: Date.now() });
-//       updatePeerPresence(client.id);
-//     } catch (error: any) {
-//       console.error(`Error sending heartbeat: ${error.message}`);
-//     }
-//   }, HEARTBEAT_INTERVAL);
-
-//   clientIntervals[client.id] = heartbeatInterval;
-
-//   req.on("close", () => {
-//     disconnected(client);
-//   });
-// });
-
 const processJoin = async (job: Job): Promise<any> => {
   try {
     const { user, eventId } = job.data;
 
+    // if (!serverState[eventId]) {
+    //   serverState[eventId] = {
+    //     id: eventId,
+    //     roundInfo: {
+    //       id: "1",
+    //       index: 1,
+    //       status: RoundStatuses.UPCOMING,
+    //       startTime: 0,
+    //       word: null,
+    //       drawerId: user.staticId,
+    //       lines: [],
+    //     },
+    //   };
+    // }
+
     if (!serverState[eventId]) {
-      serverState[eventId] = {
-        id: eventId,
-        roundInfo: {
-          id: "1",
-          index: 1,
-          status: RoundStatuses.UPCOMING,
-          startTime: 0,
-          word: null,
-          drawerId: user.staticId,
-          lines: [],
-        },
-      };
+      try {
+        const hasuraEventInfo = await getEventInfo(eventId);
+
+        if (hasuraEventInfo.teams[0].players[0].id === user.staticId) {
+          serverState[eventId] = createEventInitialState({
+            redisClient,
+            serverState,
+            timersMap,
+            hasuraEventInfo,
+          });
+        }
+      } catch (e: any) {
+        // return client.emit // potentiall need to disconnected
+      }
     }
+
+    //  send event data to all event subscribers after some user is logged in
+    await redisClient.publish(
+      `messages:${eventId}`,
+      JSON.stringify({
+        event: "event-data",
+        data: serverState[eventId],
+      })
+    );
 
     await redisClient.sAdd(`${user.id}:channels`, eventId);
 
@@ -471,8 +371,6 @@ const processJoin = async (job: Job): Promise<any> => {
   }
 };
 
-const workers: { [key: string]: Worker } = {};
-
 function getOrCreateWorker(eventId: string): Worker {
   if (!workers[eventId]) {
     workers[eventId] = new Worker(eventId, processJoin, {
@@ -488,10 +386,9 @@ function getOrCreateWorker(eventId: string): Worker {
         `Job for user ${job.data.user.id} successfully completed for event ${job.data.eventId}`
       );
 
-      const clientId = job.data.user.id;
-      if (clients[clientId]) {
-        clients[clientId].emit("join-completed", serverState[job.data.eventId]);
-      }
+      const clientId: string = job.data.user.id;
+
+      clients[clientId]?.emit("join-completed", serverState[job.data.eventId]);
     });
 
     workers[eventId].on("error", (err: Error) => {
@@ -574,70 +471,217 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 
     switch (eventType) {
       case "start-round":
-        serverState[eventId] = serverState[eventId] || {
-          id: eventId,
-          roundInfo: {
-            id: "1",
-            index: 1,
-            status: RoundStatuses.UPCOMING,
-            startTime: 0,
-            word: null,
-            drawerId: req.user.id,
-            lines: [],
-          },
-        };
+        clearTimeout(timersMap[`${AUTO_PICK_WORD_PREFIX}${data.roundId}`]);
 
-        const updates: Pick<RoundInfo, "startTime" | "status" | "word"> = {
+        const updates: StartRoundUpdates = {
           startTime: new Date().getTime(),
+          word: data.word,
           status: RoundStatuses.ONGOING,
-          word: {
-            label: "Example",
-            id: "example",
-          },
         };
 
-        serverState[eventId].roundInfo = {
-          ...serverState[eventId].roundInfo,
-          ...updates,
-        };
+        handleStartRound({
+          redisClient,
+          serverState,
+          timersMap,
+          eventId,
+          roundId: data.roundId,
+          updates,
+        });
 
-        const msg = {
-          event: "start-round",
-          data: updates,
-        };
-        console.log("SEND START ROUND MESSAGE TO ALL EVENT SUBSCRIBERS: ", msg);
-        await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
+        break;
+      // case "start-round":
+      //   clearTimeout(timersMap[`${AUTO_PICK_WORD_PREFIX}${roundId}`]);
 
-        timers[eventId] && clearTimeout(timers[eventId]);
+      //   serverState[eventId] = serverState[eventId] || {
+      //     id: eventId,
+      //     roundInfo: {
+      //       id: "1",
+      //       index: 1,
+      //       status: RoundStatuses.UPCOMING,
+      //       startTime: 0,
+      //       word: null,
+      //       drawerId: req.user.id,
+      //       lines: [],
+      //     },
+      //   };
 
-        timers[eventId] = setTimeout(
-          async () => {
-            console.log(
-              `FINISH ROUND FOR EVENT ${eventId}, START TIME: ${updates.startTime}, ENDTIME: ${new Date().getTime()}`
-            );
-            if (serverState[eventId]) {
-              serverState[eventId].roundInfo.status = RoundStatuses.SHOW_RESULT;
+      //   const updates: Pick<RoundInfo, "startTime" | "status" | "word"> = {
+      //     startTime: new Date().getTime(),
+      //     status: RoundStatuses.ONGOING,
+      //     word: {
+      //       label: "Example",
+      //       id: "example",
+      //     },
+      //   };
 
-              const msg = {
-                event: "finish-round",
-                data: { eventId },
-              };
+      //   serverState[eventId].roundInfo = {
+      //     ...serverState[eventId].roundInfo,
+      //     ...updates,
+      //   };
 
-              await redisClient.publish(
-                `messages:${eventId}`,
-                JSON.stringify(msg)
-              );
+      //   const msg = {
+      //     event: "start-round",
+      //     data: updates,
+      //   };
+      //   console.log("SEND START ROUND MESSAGE TO ALL EVENT SUBSCRIBERS: ", msg);
+      //   await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
 
-              delete timers[eventId];
-              delete serverState[eventId];
-            }
-          },
-          updates.startTime + DRAW_TIME * 1000 - new Date().getTime()
-        );
+      //   timersMap[eventId] && clearTimeout(timersMap[eventId]);
 
-        return res.json(updates);
+      //   timersMap[eventId] = setTimeout(
+      //     async () => {
+      //       console.log(
+      //         `FINISH ROUND FOR EVENT ${eventId}, START TIME: ${updates.startTime}, ENDTIME: ${new Date().getTime()}`
+      //       );
+      //       if (serverState[eventId]) {
+      //         serverState[eventId].roundInfo.status = RoundStatuses.SHOW_RESULT;
+
+      //         const msg = {
+      //           event: "finish-round",
+      //           data: { eventId },
+      //         };
+
+      //         await redisClient.publish(
+      //           `messages:${eventId}`,
+      //           JSON.stringify(msg)
+      //         );
+
+      //         delete timersMap[eventId];
+      //         delete serverState[eventId];
+      //       }
+      //     },
+      //     updates.startTime + DRAW_TIME * 1000 - new Date().getTime()
+      //   );
+
+      //   return res.json(updates);
       case "lines":
-        if (serverState[eventId]) serverState[eventId].roundInfo.lines = data;
+        if (serverState[eventId]) {
+          serverState[eventId].teams = serverState[eventId].teams.map(
+            (team) => ({
+              ...team,
+              rounds: team.rounds.map((round) =>
+                round.id === data.roundId
+                  ? {
+                      ...round,
+                      lines: data.lines,
+                    }
+                  : round
+              ),
+            })
+          );
+        }
+        break;
+      case "update-drawarea":
+        if (serverState[eventId]) {
+          const drawAreaSize = data.drawAreaSize;
+          serverState[eventId].teams = serverState[eventId].teams.map(
+            (team: Team) => ({
+              ...team,
+              rounds: team.rounds.map((round) =>
+                round.id === data.roundId
+                  ? {
+                      ...round,
+                      drawAreaSize,
+                    }
+                  : round
+              ),
+            })
+          );
+
+          console.log("UPDATE DRAW AREA", new Date().getSeconds());
+          const msg = {
+            event: "update-partial-current-round",
+            data: { drawAreaSize },
+          };
+          await redisClient.publish(`messages:${eventId}`, JSON.stringify(msg));
+        }
+        break;
+      case "new-message":
+        if (serverState[eventId]) {
+          let currRound: Round | null = null;
+          const currentTeam = serverState[eventId].teams.find((team) =>
+            team.rounds.find((round) => {
+              if (round.id === data.roundId) {
+                currRound = { ...round } as Round;
+                return true;
+              }
+              return false;
+            })
+          );
+
+          if (currentTeam && currRound) {
+            (currRound as Round).messages.push(data);
+
+            let isNeedToProcessRoundResults: boolean = false;
+            if (data.type === "DEFAULT") {
+              const isUserGuessTheWord =
+                (currRound as Round).word?.label.toLowerCase().trim() ===
+                data.text.toLowerCase().trim();
+
+              isUserGuessTheWord &&
+                !(currRound as Round).correctAnswers.find(
+                  (answer) => answer.playerId === data.player.id
+                ) &&
+                (currRound as Round).correctAnswers.push({
+                  playerId: data.player.id,
+                  guessedAt: data.createdAt,
+                });
+
+              if (
+                (currRound as Round).correctAnswers.length ===
+                currentTeam.players.length - 1
+              ) {
+                isNeedToProcessRoundResults = true;
+              }
+            }
+
+            serverState[eventId].teams = serverState[eventId].teams.map(
+              (team) =>
+                team.id === currentTeam.id
+                  ? {
+                      ...team,
+                      rounds: team.rounds.map((round) =>
+                        round.id === (currRound as Round).id
+                          ? {
+                              ...(currRound as Round),
+                            }
+                          : round
+                      ),
+                    }
+                  : team
+            );
+            const msg = {
+              event: "update-partial-current-round",
+              data: {
+                messages: (currRound as Round).messages,
+                correctAnswers: (currRound as Round).correctAnswers,
+              },
+            };
+            console.log("UPDATE MESSAGES", msg);
+            await redisClient.publish(
+              `messages:${eventId}`,
+              JSON.stringify(msg)
+            );
+            // io.to(eventId).emit("update-partial-current-round", {
+            //   messages: (currRound as Round).messages,
+            //   correctAnswers: (currRound as Round).correctAnswers,
+            // });
+
+            if (isNeedToProcessRoundResults) {
+              clearTimeout(timersMap[data.roundId]);
+
+              handleProcessRoundResults({
+                redisClient,
+                serverState,
+                timersMap,
+                eventId,
+                roundId: data.roundId,
+                isLastRound:
+                  (currRound as Round).index === currentTeam.rounds.length - 1,
+              });
+            }
+          }
+        }
         break;
     }
 
@@ -672,7 +716,7 @@ async function cleanup(): Promise<void> {
     //   clearTimeout(timerId);
     // }
 
-    for (const timerId of Object.values(timers)) {
+    for (const timerId of Object.values(timersMap)) {
       clearTimeout(timerId);
     }
 

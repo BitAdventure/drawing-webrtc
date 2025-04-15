@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { ServerURL } from "../constants/constants";
 import { WebRTCService } from "../services/webrtc";
+import { Config } from "@/services/config";
 
 interface UseBroadcastParams {
   webRTCService: WebRTCService | null;
@@ -12,11 +12,7 @@ interface UseBroadcastReturn {
   broadcast: (data: string) => void;
 }
 
-export const useBroadcast = ({
-  webRTCService,
-  eventId,
-  token,
-}: UseBroadcastParams): UseBroadcastReturn => {
+export const useBroadcast = ({ webRTCService, eventId, token }: UseBroadcastParams): UseBroadcastReturn => {
   const broadcast = useCallback(
     (data: string) => {
       // First broadcast to WebRTC peers
@@ -25,7 +21,7 @@ export const useBroadcast = ({
       // Then update server state
       if (eventId && token) {
         try {
-          fetch(`${ServerURL}/updateEvent/${eventId}`, {
+          fetch(`${Config.SERVER_URL}/updateEvent/${eventId}`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

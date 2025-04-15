@@ -1,0 +1,41 @@
+.logoWrap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 27.25rem;
+  transform: translate(-50%, 0) rotateZ(0);
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+.logoWrap.animated {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  animation: logo-animation 3s ease-in forwards;
+  width: 37.5rem;
+}
+
+@keyframes logo-animation {
+  0% {
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+    width: 37.5rem;
+  }
+  70% {
+    opacity: 1;
+    width: 37.5rem;
+    transform: translate(-50%, -50%) rotateZ(0);
+    top: 50%;
+  }
+  100% {
+    top: 0;
+    width: 27.25rem;
+    transform: translate(-50%, 0) rotateZ(0);
+    /* transform: translate(-50%, 0) rotateZ(360deg); */
+  }
+}

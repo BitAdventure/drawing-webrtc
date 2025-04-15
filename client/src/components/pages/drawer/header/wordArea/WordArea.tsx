@@ -12,11 +12,7 @@ type PropsType = {
   isCurrentUserGuessTheWord: boolean;
 };
 
-const WordArea: React.FC<PropsType> = ({
-  isDrawer,
-  roundInfo,
-  isCurrentUserGuessTheWord,
-}) => {
+const WordArea: React.FC<PropsType> = ({ isDrawer, roundInfo, isCurrentUserGuessTheWord }) => {
   const letters = useMemo(
     () =>
       roundInfo.word
@@ -43,18 +39,14 @@ const WordArea: React.FC<PropsType> = ({
         {roundInfo.word ? (
           <>
             <div className={styles.guesserWord}>
-              {letters.map((letter) => (
+              {letters.map((letter, index) => (
                 <div key={letter.id} className={styles.letterWrap}>
-                  {showWord && <p>{letter.symbol}</p>}
-                  <Underline
-                    className={letter.symbol === " " ? styles.transparent : ""}
-                  />
+                  {(showWord || roundInfo.hints.includes(index)) && <p>{letter.symbol}</p>}
+                  <Underline className={letter.symbol === " " ? styles.transparent : ""} />
                 </div>
               ))}
             </div>
-            <div className={styles.guessItText}>
-              {isDrawer ? "draw this!" : "guess this!"}
-            </div>
+            <div className={styles.guessItText}>{isDrawer ? "draw this!" : "guess this!"}</div>
           </>
         ) : (
           <div className={styles.waitingText}>Waiting...</div>

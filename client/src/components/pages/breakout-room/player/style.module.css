@@ -1,0 +1,72 @@
+.playerWrap {
+  position: absolute;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  font-weight: 500;
+  color: #fff;
+  text-shadow: 0 0.25rem 0.25rem rgba(0, 0, 0, 0.25);
+  font-size: 1.5rem;
+  font-family: ShantellSans;
+  cursor: pointer;
+  opacity: 0;
+  animation: player-fade-in 0.5s ease-in forwards;
+  max-width: 10rem;
+
+  & > span {
+    max-width: 100%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
+.player_0 {
+  top: 1.25rem;
+  left: 21.25rem;
+}
+
+.player_1 {
+  top: 1.25rem;
+  right: 21.25rem;
+}
+
+.player_2 {
+  top: 8.375rem;
+  left: 7.25rem;
+}
+
+.player_3 {
+  top: 8.375rem;
+  right: 7.25rem;
+}
+
+.player_4 {
+  bottom: 8.375rem;
+  left: 7.25rem;
+}
+
+.player_5 {
+  bottom: 8.375rem;
+  right: 7.25rem;
+}
+
+.player_6 {
+  bottom: 2.375rem;
+  left: 21.25rem;
+}
+
+.player_7 {
+  bottom: 2.375rem;
+  right: 21.25rem;
+}
+
+@keyframes player-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}

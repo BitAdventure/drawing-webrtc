@@ -1,141 +1,142 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Layer, Line, Stage } from "react-konva";
-import ConfigurationPanel from "./canvas/configurationPanel/ConfigurationPanel";
-import { colors } from "@/constants/colors";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
-import useThrottle from "@/hooks/useThrottle";
-import { RoundStatuses, ToolTypes } from "@/constants/enums";
+import { RoundStatuses, TextMessages } from "@/constants/enums";
 import Results from "./results/Results";
 import WordChoiceWaiting from "./wordChoiceWaiting/WordChoiceWaiting";
-import { RoundType } from "@/constants/types";
+import { AnswerResultType, MessageType, RoundType, WordType } from "@/constants/types";
+import CorrectAnswerIcon from "@/assets/draw/correct-answer.svg?react";
+import WrongAnswerIcon from "@/assets/draw/wrong-answer.svg?react";
+import { FieldValues } from "react-hook-form";
+import RateDrawer from "./rateDrawer/RateDrawer";
+import { useSelector } from "@/hooks/useSelector";
+import Canvas from "./canvas/Canvas";
+import { useParams } from "react-router-dom";
+import { Config } from "@/services/config";
 
-import styles from "./../style.module.css";
-
-const thicknessList = [10, 20, 40];
+import styles from "./style.module.css";
 
 type PropsType = {
-  broadcast: (data: string) => void;
-  handleStartGame: () => void;
-  isDrawer: boolean;
   roundInfo: RoundType;
-  startGameLoading: boolean;
+  isDrawer: boolean;
+  showAnswerResult: AnswerResultType;
+  currentUser: FieldValues;
+  broadcast: (data: string) => void;
+  handleSelectWord: (word: WordType) => void;
+  createMessage: (message: MessageType) => void;
 };
 
-const TestDrawArea: React.FC<PropsType> = ({
-  handleStartGame,
-  startGameLoading,
-  broadcast,
-  isDrawer,
+const DrawArea: React.FC<PropsType> = ({
   roundInfo,
+  isDrawer,
+  showAnswerResult,
+  currentUser,
+  broadcast,
+  handleSelectWord,
+  createMessage,
 }) => {
-  const [tool, setTool] = useState<ToolTypes>(ToolTypes.PEN);
-  const [lines, setLines] = useState<Array<any>>(roundInfo.lines);
-  const [currColor, setCurrColor] = useState<string>(colors[13]);
-  const [thickness, setThickness] = useState<number>(0);
-  const isDrawing = useRef(false);
-  const cursorRef = useRef<HTMLDivElement>(null);
+  const { id } = useParams();
   const drawAreaRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(0);
   const [canvasHeight, setCanvasHeight] = useState(0);
+  const [scaleCoef, setScaleCoef] = useState(1);
   const resizeTimerRef = useRef<number>(0);
+  const players = useSelector((state) => state.game.eventInfo?.team.players);
+  const webRTCToken = useSelector((state) => state.auth.webRTCToken);
 
-  const handleUpdateLines = useCallback(() => {
-    isDrawer &&
-      broadcast(
-        JSON.stringify({
-          event: "lines",
-          data: lines,
-        })
-      );
-  }, [lines, broadcast, isDrawer]);
-
-  useThrottle(lines, handleUpdateLines, 1200);
-
-  useEffect(() => {
-    if (
-      !isDrawing.current &&
-      (!isDrawer || roundInfo.status === RoundStatuses.UPCOMING)
-    )
-      setLines([...roundInfo.lines]); // prevent canvas lines updating for drawer
-  }, [isDrawer, roundInfo.status, roundInfo.lines]);
-
-  const handleMouseDown = useCallback(
-    (e: any) => {
-      isDrawing.current = true;
-      const pos = e.target.getStage().getPointerPosition();
-      setLines((prev) => [
-        ...prev,
-        {
-          id: uuidv4(),
-          tool,
-          points: [pos.x, pos.y],
-          color: currColor,
-          thickness: thicknessList[thickness],
-          createdAt: new Date().toISOString(),
-        },
-      ]);
-    },
-    [currColor, thickness, tool]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: any) => {
-      const cursorPosition = e.target.getStage().getPointerPosition();
-
-      const cursor = cursorRef.current;
-      if (cursor) {
-        cursor.style.left = `${cursorPosition.x}px`;
-        cursor.style.top = `${cursorPosition.y}px`;
+  // some calculations for guesser on canvas resize
+  const updateGuesserCanvasSize = useCallback(
+    ({
+      drawAreaDefaultWidth,
+      drawAreaDefaultHeight,
+      drawerAreaWidth,
+      drawerAreaHeight,
+    }: {
+      drawAreaDefaultWidth: number;
+      drawAreaDefaultHeight: number;
+      drawerAreaWidth: number;
+      drawerAreaHeight: number;
+    }) => {
+      const drawerDrawAreaAspectRatio = drawerAreaWidth && drawerAreaHeight ? drawerAreaWidth / drawerAreaHeight : 1;
+      const currentUserDrawAreaAspectRatio = drawAreaDefaultWidth / drawAreaDefaultHeight;
+      const ratioCoef = Math.floor(drawerDrawAreaAspectRatio / currentUserDrawAreaAspectRatio);
+      if (ratioCoef) {
+        setCanvasWidth(drawAreaDefaultWidth);
+        setCanvasHeight(drawAreaDefaultWidth / drawerDrawAreaAspectRatio);
+        setScaleCoef(drawerAreaWidth ? drawAreaDefaultWidth / drawerAreaWidth : 1);
+      } else {
+        setCanvasHeight(drawAreaDefaultHeight);
+        setCanvasWidth(drawAreaDefaultHeight * drawerDrawAreaAspectRatio);
+        setScaleCoef(drawerAreaHeight ? drawAreaDefaultHeight / drawerAreaHeight : 1);
       }
-
-      // no drawing - skipping
-      if (!isDrawing.current) {
-        return;
-      }
-      const stage = e.target.getStage();
-      const point = stage.getPointerPosition();
-
-      const updatedLines = [...lines];
-      const lastLine = updatedLines[updatedLines.length - 1];
-      // add point
-      lastLine.points = [...lastLine.points, point.x, point.y];
-      updatedLines.splice(updatedLines.length - 1, 1, lastLine);
-      setLines(updatedLines.concat());
     },
-    [lines]
+    []
   );
-
-  const handleMouseUp = useCallback(() => {
-    isDrawing.current = false;
-  }, []);
-
-  const handleChangeTickness = useCallback(
-    () => setThickness((prev) => (prev + 1) % 3),
-    [setThickness]
-  );
-  const handleChangeColor = useCallback(
-    (hex: string) => setCurrColor(hex),
-    [setCurrColor]
-  );
-
-  const handleUndoAction = useCallback(
-    () => setLines((prev) => prev.slice(0, prev.length - 1)),
-    [setLines]
-  );
-  const handleClear = useCallback(() => setLines([]), []);
 
   const handleResize = useCallback(() => {
     if (drawAreaRef.current) {
       clearTimeout(resizeTimerRef.current || 0);
-      const { clientWidth: drawAreaWidth, clientHeight: drawAreaHeight } =
-        drawAreaRef.current;
-      resizeTimerRef.current = setTimeout(() => {
+      const { clientWidth: drawAreaWidth, clientHeight: drawAreaHeight } = drawAreaRef.current;
+
+      resizeTimerRef.current = window.setTimeout(async () => {
         // updates for drawers here
-        setCanvasWidth(drawAreaWidth);
-        setCanvasHeight(drawAreaHeight);
+        if (isDrawer) {
+          setCanvasWidth(drawAreaWidth);
+          setCanvasHeight(drawAreaHeight);
+
+          // return socket.emit("update-drawarea", {
+          //   roundId: roundInfo.id,
+          //   drawAreaSize: `${drawAreaWidth}, ${drawAreaHeight}`,
+          // });
+          try {
+            await fetch(`${Config.SERVER_URL}/updateEvent/${id}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${webRTCToken}`,
+              },
+              body: JSON.stringify({
+                event: "update-drawarea",
+                data: {
+                  roundId: roundInfo?.id,
+                  drawAreaSize: `${drawAreaWidth}, ${drawAreaHeight}`,
+                },
+              }),
+            });
+          } catch (error) {
+            console.error("Error in start game:", error);
+          }
+          return;
+        }
+
+        const [drawAreaStoreWidth, drawAreaStoreHeight] = roundInfo.drawAreaSize
+          .split(", ")
+          .map((item: string) => +item);
+
+        // updates for guessers here
+        updateGuesserCanvasSize({
+          drawAreaDefaultWidth: drawAreaWidth,
+          drawAreaDefaultHeight: drawAreaHeight,
+          drawerAreaWidth: drawAreaStoreWidth,
+          drawerAreaHeight: drawAreaStoreHeight,
+        });
       }, 300);
     }
-  }, []);
+  }, [id, isDrawer, roundInfo.id, updateGuesserCanvasSize, roundInfo.drawAreaSize, webRTCToken]);
+
+  useEffect(() => {
+    if (!isDrawer && drawAreaRef.current) {
+      const { clientWidth: drawAreaDefaultWidth, clientHeight: drawAreaDefaultHeight } = drawAreaRef.current;
+
+      const [drawAreaStoreWidth, drawAreaStoreHeight] = roundInfo.drawAreaSize.split(", ").map((item: string) => +item);
+      updateGuesserCanvasSize({
+        drawAreaDefaultWidth,
+        drawAreaDefaultHeight,
+        drawerAreaWidth: drawAreaStoreWidth,
+        drawerAreaHeight: drawAreaStoreHeight,
+      });
+    }
+    //eslint-disable-next-line
+  }, [roundInfo.drawAreaSize, isDrawer]);
 
   useEffect(() => {
     handleResize();
@@ -145,92 +146,63 @@ const TestDrawArea: React.FC<PropsType> = ({
       window.removeEventListener("resize", handleResize);
     };
     // eslint-disable-next-line
-  }, []);
+  }, [roundInfo.drawAreaSize, isDrawer, roundInfo.id]);
+
+  const showResult = useMemo(() => {
+    switch (showAnswerResult) {
+      case "correct":
+        return <CorrectAnswerIcon />;
+      case "wrong":
+        return <WrongAnswerIcon />;
+      default:
+        return null;
+    }
+  }, [showAnswerResult]);
+
+  const handleRateDrawer = useCallback(
+    (type: "LIKE" | "DISLIKE") => {
+      const currentPlayerData = players?.find((player) => player.id === currentUser.metadata.playerId);
+      currentPlayerData &&
+        createMessage({
+          id: uuidv4(),
+          createdAt: new Date().toISOString(),
+          text: TextMessages[type],
+          type,
+          player: {
+            id: currentPlayerData.id,
+            name: currentPlayerData.name,
+          },
+          roundId: roundInfo.id,
+        });
+    },
+    [createMessage, currentUser.metadata.playerId, roundInfo.id, players]
+  );
 
   return (
     <div className={styles.drawAreaWrap} ref={drawAreaRef}>
-      {roundInfo.status === RoundStatuses.SHOW_RESULT ||
-      roundInfo.status === RoundStatuses.COMPLETED ? (
+      <RateDrawer isDrawer={isDrawer} handleRateDrawer={handleRateDrawer} />
+      {roundInfo.status === RoundStatuses.SHOW_RESULT || roundInfo.status === RoundStatuses.COMPLETED ? (
         <Results roundInfo={roundInfo} />
+      ) : !roundInfo.word ? (
+        <WordChoiceWaiting isDrawer={isDrawer} roundInfo={roundInfo} handleSelectWord={handleSelectWord} />
       ) : (
-        !roundInfo.word && (
-          <WordChoiceWaiting
-            isDrawer={isDrawer}
-            roundInfo={roundInfo}
-            handleStartGame={handleStartGame}
-            startGameLoading={startGameLoading}
-          />
+        !!showAnswerResult && (
+          <div className={styles.answerResultWrap}>
+            {showResult}
+            <p className={styles.answerResultText}>{`${showAnswerResult} guess!`}</p>
+          </div>
         )
       )}
-      <div
-        className={styles.canvasWrap}
-        onMouseOut={isDrawer ? handleMouseUp : undefined}
-      >
-        {isDrawer && (
-          <div
-            ref={cursorRef}
-            style={{
-              border: ".0625rem solid #000",
-              width: thicknessList[thickness],
-              aspectRatio: "1 / 1",
-              background: tool === ToolTypes.PEN ? currColor : "#fff",
-              zIndex: 4,
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              pointerEvents: "none",
-              transition:
-                "width .1s ease-in-out, height .1s ease-in-out, background .1s ease-in-out",
-            }}
-          />
-        )}
-        <Stage
-          style={{ cursor: isDrawer ? "none" : "default" }}
-          // width={500}
-          // height={300}
-          width={canvasWidth}
-          height={canvasHeight}
-          // scaleX={canvasScale}
-          // scaleY={canvasScale}
-          onMouseDown={isDrawer ? handleMouseDown : undefined}
-          onMousemove={isDrawer ? handleMouseMove : undefined}
-          onMouseup={isDrawer ? handleMouseUp : undefined}
-        >
-          <Layer>
-            {lines.map((line, i) => (
-              <Line
-                key={i}
-                points={line.points}
-                stroke={line.color}
-                strokeWidth={line.thickness}
-                tension={0.5}
-                lineCap="round"
-                lineJoin="round"
-                globalCompositeOperation={
-                  line.tool === ToolTypes.ERASER
-                    ? "destination-out"
-                    : "source-over"
-                }
-              />
-            ))}
-          </Layer>
-        </Stage>
-      </div>
-      {isDrawer && (
-        <ConfigurationPanel
-          setThickness={handleChangeTickness}
-          color={currColor}
-          setColor={handleChangeColor}
-          tool={tool}
-          setTool={setTool}
-          handleUndo={handleUndoAction}
-          handleClear={handleClear}
-        />
-      )}
+      <Canvas
+        broadcast={broadcast}
+        currentRound={roundInfo}
+        isDrawer={isDrawer}
+        width={canvasWidth}
+        height={canvasHeight}
+        scaleCoef={scaleCoef}
+      />
     </div>
   );
 };
 
-export default TestDrawArea;
+export default DrawArea;

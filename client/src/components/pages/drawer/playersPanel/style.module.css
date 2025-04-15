@@ -1,0 +1,33 @@
+.panelWrap {
+  position: relative;
+  width: 16.875rem;
+  min-width: 16.875rem;
+}
+
+.playersList {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  gap: 0.325rem;
+  overflow: hidden;
+  max-height: calc(100% - 0.5rem);
+}
+
+.navigationBtn {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 1.5rem);
+
+  & > svg {
+    transform-origin: center;
+    transition: transform 0.2s ease-in-out;
+  }
+
+  &.toTop > svg {
+    transform: rotate(180deg);
+  }
+}

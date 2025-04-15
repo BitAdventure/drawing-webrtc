@@ -1,0 +1,55 @@
+.playerAvatarWrap {
+  position: relative;
+  cursor: pointer;
+  width: 5.625rem;
+  aspect-ratio: 1 / 1;
+  z-index: 2;
+  transition: transform 0.2s ease-in-out;
+}
+
+.selectedAvatarWrap {
+  position: relative;
+  width: 11.375rem;
+  z-index: 2;
+  margin-bottom: 2rem;
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+}
+
+:where(.playerAvatarWrap, .selectedAvatarWrap)::before {
+  display: block;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("/player-icons/picked-avatar-circle.svg") no-repeat;
+  background-size: contain;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  z-index: -1;
+}
+
+.active.playerAvatarWrap:not(.isBreakout) {
+  transform: scale(1.5);
+}
+
+.isBreakout {
+  width: 10rem;
+  min-width: 10rem;
+}
+
+:where(.active.playerAvatarWrap, .selectedAvatarWrap)::before {
+  opacity: 1;
+}
+
+.playerAvatar {
+  position: absolute;
+  display: block;
+  width: 100%;
+  height: auto;
+}

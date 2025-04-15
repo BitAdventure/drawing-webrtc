@@ -1,0 +1,37 @@
+.contentWrap {
+  max-width: 80%;
+  width: 70.75rem;
+}
+
+.resultsHeader {
+  /* width: 100%; */
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translate(-50%);
+  max-width: 80%;
+  width: 70.75rem;
+  padding: 1.8125rem;
+  background: #37799e;
+  box-shadow: 0 0.25rem 0.25rem 0 rgba(0, 0, 0, 0.25);
+  font-family: ShantellSans;
+  font-weight: 800;
+  font-size: 1.75rem;
+  line-height: 1;
+  text-shadow: 0 0.375rem 0.375rem rgba(0, 0, 0, 0.25);
+  color: #fff;
+  -webkit-text-stroke-width: 0.5rem;
+  -webkit-text-stroke-color: #42476d;
+  paint-order: stroke fill;
+  text-align: center;
+}
+
+.placesContentWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: center;
+  padding: 5rem 0 7.125rem;
+  gap: 2rem;
+}

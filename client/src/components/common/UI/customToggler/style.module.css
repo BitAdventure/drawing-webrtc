@@ -1,0 +1,130 @@
+.toggleWrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.isDisabled.toggleWrap::before {
+  display: block;
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  cursor: default;
+}
+
+.toggler {
+  position: relative;
+  display: block;
+  width: 12rem;
+  height: 3.25rem;
+}
+
+.isDisabled.toggleWrap .toggler::before {
+  display: block;
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  cursor: default;
+}
+
+.input {
+  display: none;
+}
+
+.customToggle {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: 0.3s;
+  border-radius: 1rem;
+  background-color: #f9584a;
+}
+
+.isDisabled.toggleWrap .customToggle {
+  background-color: #c5c5c5;
+}
+
+.labelText {
+  cursor: pointer;
+  font-size: 1.125rem;
+  font-family: Nunito;
+  font-weight: 700;
+}
+
+.onText,
+.offText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: Nunito;
+  font-size: 1.125rem;
+  font-weight: 700;
+  transition: all 0.3s ease-in-out;
+  opacity: 0;
+}
+
+.onText.on {
+  color: #34a94d;
+  opacity: 1;
+}
+
+.offText.off {
+  color: #f9584a;
+  opacity: 1;
+}
+
+.isDisabled.toggleWrap :where(.onText, .offText) {
+  color: #c5c5c5;
+}
+
+.checkedLabelWrap {
+  position: absolute;
+  height: 100%;
+  width: 50%;
+  left: 0;
+  top: 0;
+  background: #fff;
+  box-shadow: 0 0.25rem 0.25rem 0 rgba(0, 0, 0, 0.25);
+  border-radius: 1rem;
+  transition: 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.checkedIcon {
+  opacity: 0;
+}
+
+.input:checked + .customToggle {
+  background-color: #34a94d;
+}
+
+.input:checked + .customToggle > .checkedLabelWrap {
+  left: 50%;
+}
+/* 
+.input:checked + .customToggle .checkedIcon {
+  opacity: 1;
+}
+
+.input:checked + .customToggle .uncheckedIcon {
+  opacity: 0;
+} */

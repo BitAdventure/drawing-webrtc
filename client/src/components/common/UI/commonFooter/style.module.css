@@ -1,0 +1,71 @@
+.footer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 1.25rem 0;
+  background: rgba(10, 76, 114, 0.5);
+  border-top: 0.125rem solid #5b92bc;
+  opacity: 1;
+}
+
+.footerContent {
+  position: relative;
+  max-width: 80%;
+  width: 70.75rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.footer.animated {
+  opacity: 0;
+  animation: content-animation 5s ease-in forwards;
+}
+
+.footerBtnWrap {
+  position: relative;
+  width: 15.5rem;
+}
+
+.settingsBtn {
+  position: relative;
+  width: 4rem;
+  margin-right: auto;
+
+  & > img {
+    width: 100%;
+    height: auto;
+  }
+
+  &:hover > img {
+    animation: settings-animation 5s linear infinite;
+  }
+}
+
+@keyframes content-animation {
+  0% {
+    opacity: 0;
+    /* bottom: -1.25rem; */
+  }
+  80% {
+    opacity: 0;
+    /* bottom: -1.25rem; */
+  }
+  100% {
+    opacity: 1;
+    /* bottom: 0; */
+  }
+}
+
+@keyframes settings-animation {
+  0% {
+    transform: rotate(0);
+    /* bottom: -1.25rem; */
+  }
+  100% {
+    transform: rotate(360deg);
+    /* bottom: 0; */
+  }
+}
