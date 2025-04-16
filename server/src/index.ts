@@ -16,7 +16,7 @@ import {
   createEventInitialState,
   handleProcessRoundResults,
   handleStartRound,
-} from "utils.js";
+} from "./utils.js";
 
 const HEARTBEAT_INTERVAL = 10000;
 const PEER_TIMEOUT = 60000;
