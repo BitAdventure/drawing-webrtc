@@ -18,18 +18,6 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 
 FROM deps as build
 
-ARG SERVER_URL
-ARG API_BASE_URL
-ARG HASURA_BASE_URL
-ARG WEB_SOCKET_URL
-ARG UNIVERSAL_LOGIN_URL
-
-ENV VITE_SERVER_URL=${SERVER_URL}
-ENV VITE_API_BASE_URL=${API_BASE_URL}
-ENV VITE_HASURA_BASE_URL=${HASURA_BASE_URL}
-ENV VITE_WEB_SOCKET_URL=${WEB_SOCKET_URL}
-ENV VITE_UNIVERSAL_LOGIN_URL=${UNIVERSAL_LOGIN_URL}
-
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=pnpm-lock.yaml,target=pnpm-lock.yaml \
     --mount=type=cache,target=/root/.local/share/pnpm/store \
