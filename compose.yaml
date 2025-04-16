@@ -2,11 +2,19 @@ services:
   server:
     build:
       context: .
+      args:
+        SERVER_URL: ${SERVER_URL}
+        API_BASE_URL: ${API_BASE_URL}
+        HASURA_BASE_URL: ${HASURA_GRAPHQL_URL}
+        WEB_SOCKET_URL: ${WEB_SOCKET_URL}
+        UNIVERSAL_LOGIN_URL: ${UNIVERSAL_LOGIN_URL}
     environment:
       PORT: 3000
       TOKEN_SECRET: secret
       NODE_ENV: production
       REDIS_URL: redis://redis:6379
+      API_HASURA_BASE_URL: ${HASURA_GRAPHQL_URL}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
     expose:
       - 3000
     networks:
