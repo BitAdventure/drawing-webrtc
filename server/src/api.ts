@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Message, Player, RoundResults } from "./types.js";
-import { getRoundResults } from "utils.js";
+import { getRoundResults } from "./utils.js";
 
 export const hasuraInstance = axios.create({
   baseURL: process.env.API_HASURA_BASE_URL,

@@ -10,7 +10,7 @@ import cors from "cors";
 import { RoundStatuses, ClientStatuses } from "./enums.js";
 import { Job, Queue, Worker } from "bullmq";
 import { Event, Round, StartRoundUpdates, Team, TimersMap } from "./types.js";
-import { getEventInfo } from "api.js";
+import { getEventInfo } from "./api.js";
 import {
   AUTO_PICK_WORD_PREFIX,
   createEventInitialState,
@@ -46,7 +46,7 @@ const pubSubRedisClient = await initializeRedisClient();
 
 async function updatePeerPresence(
   clientId: string,
-  isActive: boolean = true
+  isActive: boolean = true,
 ): Promise<void> {
   try {
     const key = `peer:presence:${clientId}`;
@@ -76,7 +76,7 @@ async function isPeerAvailable(peerId: string): Promise<boolean> {
 
 async function markClientStatus(
   client: any,
-  status: ClientStatuses
+  status: ClientStatuses,
 ): Promise<void> {
   try {
     const key = `client:status:${client.id}`;
@@ -126,7 +126,7 @@ async function disconnected(client: any): Promise<void> {
   await markClientStatus(client, ClientStatuses.DISCONNECTED);
 
   console.log(
-    `Grace period ended for client ${client.id} - cleaning up resources`
+    `Grace period ended for client ${client.id} - cleaning up resources`,
   );
 
   delete clients[client.id];
@@ -155,9 +155,9 @@ async function disconnected(client: any): Promise<void> {
             if (peerId !== client.id && (await isPeerAvailable(peerId))) {
               await redisClient.publish(`messages:${peerId}`, msg);
             }
-          })
+          }),
         );
-      })
+      }),
     );
 
     await redisClient.del(`client:status:${client.id}`);
@@ -190,7 +190,7 @@ function auth(req: any, res: any, next: any): void {
         id: token,
       };
       next();
-    }
+    },
   );
 }
 
@@ -248,7 +248,7 @@ app.get("/connect", auth, async (req: any, res: any) => {
       } catch (error: any) {
         console.error(`Error handling message: ${error.message}`);
       }
-    }
+    },
   );
 
   client.emit("connected", { user: req.user });
@@ -311,14 +311,14 @@ const processJoin = async (job: Job): Promise<any> => {
       JSON.stringify({
         event: "event-data",
         data: serverState[eventId],
-      })
+      }),
     );
 
     await redisClient.sAdd(`${user.id}:channels`, eventId);
 
     const peerIds = await redisClient.sMembers(`channels:${eventId}`);
     console.log(
-      `PEER IDS FOR USER ${user.id}, EVENT ${eventId}: ${JSON.stringify(peerIds)}`
+      `PEER IDS FOR USER ${user.id}, EVENT ${eventId}: ${JSON.stringify(peerIds)}`,
     );
 
     for (const peerId of peerIds) {
@@ -332,7 +332,7 @@ const processJoin = async (job: Job): Promise<any> => {
               eventId,
               offer: false,
             },
-          })
+          }),
         );
 
         await redisClient.publish(
@@ -344,7 +344,7 @@ const processJoin = async (job: Job): Promise<any> => {
               eventId,
               offer: true,
             },
-          })
+          }),
         );
       }
     }
@@ -359,7 +359,7 @@ const processJoin = async (job: Job): Promise<any> => {
           JSON.stringify({
             event: "ice-candidate",
             data: candidateData,
-          })
+          }),
         );
       }
     }
@@ -383,7 +383,7 @@ function getOrCreateWorker(eventId: string): Worker {
 
     workers[eventId].on("completed", (job: Job) => {
       console.log(
-        `Job for user ${job.data.user.id} successfully completed for event ${job.data.eventId}`
+        `Job for user ${job.data.user.id} successfully completed for event ${job.data.eventId}`,
       );
 
       const clientId: string = job.data.user.id;
@@ -421,7 +421,7 @@ app.post("/:eventId/join", auth, async (req: any, res: any) => {
           type: "exponential",
           delay: 1000,
         },
-      }
+      },
     );
 
     return res.sendStatus(200);
@@ -565,9 +565,9 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
                       ...round,
                       lines: data.lines,
                     }
-                  : round
+                  : round,
               ),
-            })
+            }),
           );
         }
         break;
@@ -583,9 +583,9 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
                       ...round,
                       drawAreaSize,
                     }
-                  : round
+                  : round,
               ),
-            })
+            }),
           );
 
           console.log("UPDATE DRAW AREA", new Date().getSeconds());
@@ -606,7 +606,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
                 return true;
               }
               return false;
-            })
+            }),
           );
 
           if (currentTeam && currRound) {
@@ -620,7 +620,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
 
               isUserGuessTheWord &&
                 !(currRound as Round).correctAnswers.find(
-                  (answer) => answer.playerId === data.player.id
+                  (answer) => answer.playerId === data.player.id,
                 ) &&
                 (currRound as Round).correctAnswers.push({
                   playerId: data.player.id,
@@ -645,10 +645,10 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
                           ? {
                               ...(currRound as Round),
                             }
-                          : round
+                          : round,
                       ),
                     }
-                  : team
+                  : team,
             );
             const msg = {
               event: "update-partial-current-round",
@@ -660,7 +660,7 @@ app.post("/updateEvent/:eventId", auth, async (req: any, res: any) => {
             console.log("UPDATE MESSAGES", msg);
             await redisClient.publish(
               `messages:${eventId}`,
-              JSON.stringify(msg)
+              JSON.stringify(msg),
             );
             // io.to(eventId).emit("update-partial-current-round", {
             //   messages: (currRound as Round).messages,
