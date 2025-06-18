@@ -1,0 +1,28 @@
+{
+  "name": "sw-server",
+  "type": "module",
+  "version": "1.0.0",
+  "author": "Pavel Karpovich <pavel.karpovich@outlook.com>",
+  "scripts": {
+    "start": "node ./dist/index.js",
+    "dev": "tsx --watch --env-file=.env ./src/index.ts",
+    "build": "tsc --p tsconfig.json"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "bullmq": "^5.53.3",
+    "jsonwebtoken": "^9.0.2",
+    "redis": "^4.6.15",
+    "socket.io": "^4.7.5",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^10.0.0",
+    "prettier": "^3.1.1",
+    "tsx": "^4.16.2",
+    "typescript": "^5.3.3"
+  }
+}
