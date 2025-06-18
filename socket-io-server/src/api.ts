@@ -4,7 +4,6 @@ import { Message, Player, RoundResults } from "./types.js";
 
 export const hasuraInstance = axios.create({
   baseURL: process.env.API_HASURA_BASE_URL,
-  // baseURL: Config.API_HASURA_BASE_URL,
   headers: {
     "Content-Type": "application/json",
     "x-hasura-admin-secret": process.env.HASURA_GRAPHQL_ADMIN_SECRET,
@@ -68,10 +67,15 @@ export const getEventInfo = async (eventId: string) => {
       return res.data;
     })
     .then((res) => res.data.event);
-  // .catch((e) => rejectWithValue(e.message));
 };
 
-export const updateEvent = async ({ eventId, updates }: { eventId: string; updates: any }) => {
+export const updateEvent = async ({
+  eventId,
+  updates,
+}: {
+  eventId: string;
+  updates: any;
+}) => {
   const graphqlQuery = {
     operationName: "MyMutation",
     query: `mutation MyMutation ($eventId: uuid!, $updates: events_set_input) {
@@ -96,7 +100,6 @@ export const updateEvent = async ({ eventId, updates }: { eventId: string; updat
       return res.data;
     })
     .then((res) => res.data.update_events_by_pk.id);
-  // .catch((e) => rejectWithValue(e.message));
 };
 
 export const processingRoundResults = async (payload: {
