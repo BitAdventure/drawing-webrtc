@@ -2,8 +2,6 @@ import axios from "axios";
 import { getRoundResults } from "./utils.js";
 import { Message, Player, RoundResults } from "./types.js";
 
-export const InvalidJWTCodeError = "invalid-jwt";
-
 export const hasuraInstance = axios.create({
   baseURL: process.env.API_HASURA_BASE_URL,
   // baseURL: Config.API_HASURA_BASE_URL,
@@ -13,7 +11,7 @@ export const hasuraInstance = axios.create({
   },
 });
 
-export const GRAPHQL_URL = "graphql";
+const GRAPHQL_URL = "graphql";
 
 export const getEventInfo = async (eventId: string) => {
   const graphqlQuery = {
