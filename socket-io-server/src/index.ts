@@ -1,14 +1,23 @@
 import http from "http";
+import express from "express";
+import path from "path";
 import { Server, Socket } from "socket.io";
 import registerHandlers from "./handlers.js";
 import { initializeRedisClient } from "./redisClient.js";
 import { ServerState, TimersMap, Workers } from "./types.js";
 import { Job, Queue, Worker } from "bullmq";
-import { ClientStatuses } from "enums.js";
+import { ClientStatuses } from "./enums.js";
 
 const PEER_TIMEOUT = 60000;
 
-const server = http.createServer();
+const app = express();
+const server = http.createServer(app);
+
+app.use(express.static(path.join(process.cwd(), "public")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "index.html"));
+});
 
 const io = new Server(server, {
   cors: {
@@ -26,7 +35,7 @@ const redisClient = await initializeRedisClient();
 
 async function updatePeerPresence(
   clientId: string,
-  isActive: boolean = true
+  isActive: boolean = true,
 ): Promise<void> {
   try {
     const key = `peer:presence:${clientId}`;
@@ -55,7 +64,7 @@ export async function isPeerAvailable(peerId: string): Promise<boolean> {
 
 export async function markClientStatus(
   client: any,
-  status: ClientStatuses
+  status: ClientStatuses,
 ): Promise<void> {
   try {
     const key = `client:status:${client.id}`;
@@ -68,7 +77,7 @@ export async function markClientStatus(
 
 export async function storeIceCandidate(
   peerId: string,
-  data: any
+  data: any,
 ): Promise<void> {
   try {
     if (!pendingIceCandidates[peerId]) {
@@ -103,7 +112,7 @@ export async function disconnected(client: any): Promise<void> {
   await markClientStatus(client, ClientStatuses.DISCONNECTED);
 
   console.log(
-    `Grace period ended for client ${client.id} - cleaning up resources`
+    `Grace period ended for client ${client.id} - cleaning up resources`,
   );
 
   delete clients[client.id];
@@ -121,7 +130,7 @@ export async function disconnected(client: any): Promise<void> {
         const peerIds = await redisClient.sMembers(`channels:${eventId}`);
         console.log(
           "PEER IDS AFTER REMOVE: ",
-          JSON.parse(JSON.stringify(peerIds))
+          JSON.parse(JSON.stringify(peerIds)),
         );
         // const msg = JSON.stringify({
         //   event: "remove-peer",
@@ -142,7 +151,7 @@ export async function disconnected(client: any): Promise<void> {
             });
           }
         });
-      })
+      }),
     );
 
     await redisClient.del(`client:status:${client.id}`);
@@ -194,7 +203,7 @@ async function cleanup(): Promise<void> {
   }
 }
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

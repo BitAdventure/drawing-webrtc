@@ -22,9 +22,9 @@ import {
   isPeerAvailable,
   markClientStatus,
   storeIceCandidate,
-} from "index.js";
+} from "./index.js";
 import { Job, Queue, Worker } from "bullmq";
-import { redisOptions } from "redisClient.js";
+import { redisOptions } from "./redisClient.js";
 
 const registerHandlers = async ({
   io,
