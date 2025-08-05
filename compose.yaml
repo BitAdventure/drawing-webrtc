@@ -36,6 +36,26 @@ services:
     networks:
       - default
 
+  coturn:
+    image: coturn/coturn:4.6.3
+    network_mode: host
+    environment:
+      - DETECT_EXTERNAL_IP=yes
+      - STATIC_AUTH_SECRET=${TURN_SECRET:-$(openssl rand -hex 16)}
+      - TURN_USERNAME=${TURN_USERNAME:-turnuser}
+      - TURN_PASSWORD=${TURN_PASSWORD:-turnpass}
+    command: |
+      -n
+      --log-file=stdout
+      --min-port=49152
+      --max-port=65535
+      --fingerprint
+      --lt-cred-mech
+      --realm=${SERVER_IP:-${DOMAIN:-localhost}}
+      --server-name=${SERVER_IP:-${DOMAIN:-localhost}}
+      --static-auth-secret=$${STATIC_AUTH_SECRET}
+    restart: unless-stopped
+
 volumes:
   redis_data:
 
