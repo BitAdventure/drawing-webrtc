@@ -1,0 +1,64 @@
+services:
+  server:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: ${API_BASE_URL}
+        VITE_API_WEB_SOCKET_URL: ${WEB_SOCKET_URL}
+        VITE_API_HASURA_BASE_URL: ${HASURA_GRAPHQL_URL}
+        VITE_UNIVERSAL_LOGIN_URL: ${UNIVERSAL_LOGIN_URL}
+        VITE_SOCKET_IO_SERVER_URL: ${SERVER_URL}
+    environment:
+      PORT: 3000
+      TOKEN_SECRET: secret
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      API_HASURA_BASE_URL: ${HASURA_GRAPHQL_URL}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET}
+    expose:
+      - 3000
+    networks:
+      - proxy
+      - default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drawing.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.drawing.entrypoints=web-secure"
+      - "traefik.http.services.drawing.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis_data:/data
+    networks:
+      - default
+
+  coturn:
+    image: coturn/coturn:4.6.3
+    network_mode: host
+    environment:
+      - DETECT_EXTERNAL_IP=yes
+      - STATIC_AUTH_SECRET=${TURN_SECRET:-$(openssl rand -hex 16)}
+      - TURN_USERNAME=${TURN_USERNAME:-turnuser}
+      - TURN_PASSWORD=${TURN_PASSWORD:-turnpass}
+    command: |
+      -n
+      --log-file=stdout
+      --min-port=49152
+      --max-port=65535
+      --fingerprint
+      --lt-cred-mech
+      --realm=${SERVER_IP:-${DOMAIN:-localhost}}
+      --server-name=${SERVER_IP:-${DOMAIN:-localhost}}
+      --static-auth-secret=$${STATIC_AUTH_SECRET}
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  proxy:
+    external: true
