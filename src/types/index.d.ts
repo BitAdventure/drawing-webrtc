@@ -12,6 +12,7 @@ declare global {
       VITE_TURN_SERVER_IP_ADDRESS?: string;
       VITE_TURN_SERVER_USERNAME?: string;
       VITE_TURN_SERVER_CREDENTIAL?: string;
+      VITE_SENTRY_DSN?: string;
     };
   }
 }

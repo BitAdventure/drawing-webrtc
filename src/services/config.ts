@@ -1,4 +1,5 @@
 interface IConfig {
+  MODE: string;
   API_BASE_URL: string;
   API_WEB_SOCKET_URL: string;
   API_HASURA_BASE_URL: string;
@@ -7,9 +8,11 @@ interface IConfig {
   TURN_SERVER_IP_ADDRESS: string;
   TURN_SERVER_USERNAME: string;
   TURN_SERVER_CREDENTIAL: string;
+  SENTRY_DSN: string;
 }
 
 export const Config: IConfig = {
+  MODE: import.meta.env.MODE,
   API_BASE_URL:
     import.meta.env.VITE_API_BASE_URL || window._env_.VITE_API_BASE_URL,
   API_WEB_SOCKET_URL:
@@ -33,4 +36,5 @@ export const Config: IConfig = {
   TURN_SERVER_CREDENTIAL:
     import.meta.env.VITE_TURN_SERVER_CREDENTIAL ||
     window._env_.VITE_TURN_SERVER_CREDENTIAL,
+  SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN || window._env_.VITE_SENTRY_DSN,
 };

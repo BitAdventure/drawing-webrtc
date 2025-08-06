@@ -49,15 +49,13 @@ const PickAvatar = () => {
   const avatarId: number = watch("avatarId", getValues().avatarId);
   const { updateAvatar } = useActions();
 
-  const handlePickAvatar = useCallback(
-    async (data: FieldValues) => {
-      const successfulCallback = () => {
-        navigate(`/${id}/${BREAKOUT_ROOM}`);
-      };
-      await updateAvatar({ data, successfulCallback });
-    },
-    [updateAvatar, navigate, id]
-  );
+  const handlePickAvatar = useCallback((data: FieldValues) => {
+    const successfulCallback = () => {
+      navigate(`/${id}/${BREAKOUT_ROOM}`);
+    };
+
+    updateAvatar({ data, successfulCallback });
+  }, []);
 
   const handleSubmitForm = useCallback(
     (e: React.MouseEvent<HTMLButtonElement> | React.KeyboardEvent) => {
