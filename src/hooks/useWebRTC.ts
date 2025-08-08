@@ -107,7 +107,10 @@ export const useWebRTC = ({
           }
         }
       } catch (error) {
-        console.error("Error processing peer data:", error);
+        console.error(
+          `Error processing peer data (msg: ${data}, peerId: ${peerId}):`,
+          error
+        );
       }
     },
     [updateLines]
@@ -136,11 +139,10 @@ export const useWebRTC = ({
           }
         }, ICE_GATHERING_TIMEOUT);
       } catch (error) {
-        console.error("Error creating offer:", error);
+        console.error(`Error creating offer for ${peerId}: `, error);
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       }
     },
-    // eslint-disable-next-line
     [relay, updatePeerConnectionState]
   );
 
@@ -347,7 +349,7 @@ export const useWebRTC = ({
     try {
       webRTCServiceRef.current?.removePeer(payload.peer.id);
     } catch (error) {
-      console.error("Error removing peer:", error);
+      console.error(`Error removing peer ${payload?.peer?.id}:`, error);
     }
   }, []);
 
@@ -376,7 +378,7 @@ export const useWebRTC = ({
         );
       }
     } catch (error) {
-      console.error("Error handling ICE candidate:", error);
+      console.error(`Error handling ICE candidate ${payload}: `, error);
     }
   }, []);
 

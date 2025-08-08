@@ -1,11 +1,14 @@
+import "./sentry.js";
+import "./logger.js";
+
 import http from "http";
 import express from "express";
 import path from "path";
+import * as Sentry from "@sentry/node";
 import { Server, Socket } from "socket.io";
 import registerHandlers from "./handlers.js";
 import { initializeRedisClient } from "./redisClient.js";
 import { ServerState, TimersMap, Workers } from "./types.js";
-import { Job, Queue, Worker } from "bullmq";
 import { ClientStatuses } from "./enums.js";
 
 const PEER_TIMEOUT = 60000;
@@ -18,6 +21,8 @@ app.use(express.static(path.join(process.cwd(), "public")));
 app.get("*", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "index.html"));
 });
+
+Sentry.setupExpressErrorHandler(app);
 
 const io = new Server(server, {
   cors: {
@@ -35,7 +40,7 @@ const redisClient = await initializeRedisClient();
 
 async function updatePeerPresence(
   clientId: string,
-  isActive: boolean = true,
+  isActive: boolean = true
 ): Promise<void> {
   try {
     const key = `peer:presence:${clientId}`;
@@ -45,7 +50,9 @@ async function updatePeerPresence(
       await redisClient.del(key);
     }
   } catch (error: any) {
-    console.error(`Error updating peer presence: ${error.message}`);
+    console.error(
+      `Error updating peer presence (clientId: ${clientId}, isActive: ${isActive}): ${error.message}`
+    );
   }
 }
 
@@ -57,27 +64,31 @@ export async function isPeerAvailable(peerId: string): Promise<boolean> {
     const lastSeen = parseInt(timestamp);
     return Date.now() - lastSeen < PEER_TIMEOUT;
   } catch (error: any) {
-    console.error(`Error checking peer availability: ${error.message}`);
+    console.error(
+      `Error checking peer availability (peerId: ${peerId}): ${error.message}`
+    );
     return false;
   }
 }
 
 export async function markClientStatus(
   client: any,
-  status: ClientStatuses,
+  status: ClientStatuses
 ): Promise<void> {
   try {
     const key = `client:status:${client.id}`;
     await redisClient.set(key, status);
     await updatePeerPresence(client.id, status === ClientStatuses.CONNECTED);
   } catch (error: any) {
-    console.error(`Error marking client as ${status}: ${error.message}`);
+    console.error(
+      `Error marking client (${client.id}) as ${status}: ${error.message}`
+    );
   }
 }
 
 export async function storeIceCandidate(
   peerId: string,
-  data: any,
+  data: any
 ): Promise<void> {
   try {
     if (!pendingIceCandidates[peerId]) {
@@ -89,7 +100,9 @@ export async function storeIceCandidate(
     await redisClient.rPush(key, JSON.stringify(data));
     await redisClient.expire(key, 300);
   } catch (error: any) {
-    console.error(`Error storing ICE candidate: ${error.message}`);
+    console.error(
+      `Error storing ICE candidate (peerId: ${peerId}, data: ${JSON.parse(JSON.stringify(data))}): ${error.message}`
+    );
   }
 }
 
@@ -101,7 +114,9 @@ export async function getPendingIceCandidates(peerId: string): Promise<any[]> {
 
     return candidates.map((candidate) => JSON.parse(candidate));
   } catch (error: any) {
-    console.error(`Error getting pending ICE candidates: ${error.message}`);
+    console.error(
+      `Error getting pending ICE candidates (peerId: ${peerId}): ${error.message}`
+    );
     return [];
   }
 }
@@ -112,7 +127,7 @@ export async function disconnected(client: any): Promise<void> {
   await markClientStatus(client, ClientStatuses.DISCONNECTED);
 
   console.log(
-    `Grace period ended for client ${client.id} - cleaning up resources`,
+    `Grace period ended for client ${client.id} - cleaning up resources`
   );
 
   delete clients[client.id];
@@ -125,39 +140,34 @@ export async function disconnected(client: any): Promise<void> {
 
     await Promise.all(
       eventIds.map(async (eventId: string) => {
-        console.log("REMOVE EVENT: ", eventId, client.id);
+        console.log(`REMOVE EVENT: event: ${eventId}, clientId: ${client.id}`);
         await redisClient.sRem(`channels:${eventId}`, client.id);
         const peerIds = await redisClient.sMembers(`channels:${eventId}`);
         console.log(
-          "PEER IDS AFTER REMOVE: ",
-          JSON.parse(JSON.stringify(peerIds)),
+          `PEER IDS AFTER REMOVE: ${JSON.parse(JSON.stringify(peerIds))}`
         );
-        // const msg = JSON.stringify({
-        //   event: "remove-peer",
-        //   data: {
-        //     peer: client.user,
-        //     eventId,
-        //   },
-        // });
 
         peerIds.map(async (peerId: string) => {
-          console.log("BEFORE REMOVE PEER: ", peerId, client.id);
           if (peerId !== client.id && (await isPeerAvailable(peerId))) {
             // await redisClient.publish(`messages:${peerId}`, msg);
-            console.log("emit remove peer");
+            console.log(
+              `emit remove peer (peerId: ${peerId}, clientId: ${client.id}, eventId: ${eventId})`
+            );
             io.to(peerId).emit("remove-peer", {
               peer: client.user,
               eventId,
             });
           }
         });
-      }),
+      })
     );
 
     await redisClient.del(`client:status:${client.id}`);
     await redisClient.del(`peer:presence:${client.id}`);
   } catch (error: any) {
-    console.error(`Error during client cleanup: ${error.message}`);
+    console.error(
+      `Error during client (${client.id}) cleanup: ${error.message}`
+    );
   }
 }
 

@@ -203,7 +203,7 @@ export const handleStartRound = ({
       serverState[eventId].gameInformationSketchWars.drawTime * 1000
     );
 
-    console.log("START ROUND", new Date().getSeconds());
+    console.log(`START ROUND FOR EVENT ${eventId}`);
 
     io.to(eventId).emit("update-current-round", roundData);
   }
@@ -275,7 +275,7 @@ export const handleProcessRoundResults = async ({
             : team
         );
 
-        console.log("PROCESSING ROUND RESULTS", new Date().getSeconds());
+        console.log(`PROCESSING ROUND RESULTS FOR EVENT ${eventId}`);
 
         io.to(eventId).emit("show-result", { roundResults: updatedPlayers });
 
@@ -344,11 +344,14 @@ export const handleProcessRoundResults = async ({
           }
 
           redisClient.set(eventId, JSON.stringify(serverState[eventId]));
-          console.log("ROUND COMPLETED", new Date().getSeconds());
+          console.log(`ROUND COMPLETED FOR EVENT ${eventId}`);
           io.to(eventId).emit("event-data", serverState[eventId]);
         }, 5000);
       } catch (e) {
-        console.log(e);
+        console.error(
+          `Error processing round results (team: ${currentTeam}, currentRound: ${currRound})`,
+          e
+        );
       }
     }
   }

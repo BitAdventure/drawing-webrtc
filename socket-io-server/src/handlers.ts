@@ -85,10 +85,6 @@ const registerHandlers = async ({
 
   socket.join(eventId);
 
-  // send event data message to this connection
-  console.log("ON CONNECTION", new Date().getSeconds(), serverState[eventId]);
-  // io.to(eventId).emit("event-data", serverState[eventId]);
-
   // process peer join
   async function handleJoinPeer(job: Job): Promise<any> {
     try {
@@ -102,9 +98,7 @@ const registerHandlers = async ({
       );
 
       for (const peerId of peerIds) {
-        console.log("BEFORE ADD PEER", peerId, user.id);
         if (user.id !== peerId && (await isPeerAvailable(peerId))) {
-          console.log("emit add peer");
           io.to(peerId).emit("add-peer", {
             peer: user,
             eventId,
@@ -123,18 +117,11 @@ const registerHandlers = async ({
       const pendingCandidates = await getPendingIceCandidates(user.id);
       if (pendingCandidates.length > 0) {
         for (const candidateData of pendingCandidates) {
-          // await redisClient.publish(
-          //   `messages:${user.id}`,
-          //   JSON.stringify({
-          //     event: "ice-candidate",
-          //     data: candidateData,
-          //   })
-          // );
           io.to(user.id).emit("ice-candidate", candidateData);
         }
       }
     } catch (error: any) {
-      console.error(`Error processing join: ${error.message}`);
+      console.error(`Error processing join (${job.data}): ${error.message}`);
     }
   }
 
@@ -179,9 +166,11 @@ const registerHandlers = async ({
       }
     );
 
-    console.log("JOIN COMPLETED");
+    console.log(`JOIN COMPLETED FOR ${client.user}`);
   } catch (error: any) {
-    console.error(`Error adding join job: ${error.message}`);
+    console.error(
+      `Error adding join job (client: ${client}, event: ${eventId}): ${error.message}`
+    );
   }
   // finish peer join
 
@@ -200,17 +189,21 @@ const registerHandlers = async ({
         if (!(await isPeerAvailable(peerId))) {
           if (event === "ice-candidate") {
             await storeIceCandidate(peerId, eventData);
-            return console.log("SUCCESSFUL ICE CANDIDATE RELAY");
+            return console.log(
+              `SUCCESSFUL ICE CANDIDATE RELAY (peerId: ${peerId}, eventData: ${eventData})`
+            );
           }
-          return console.log("Peer not available");
+          return console.log(`Peer not available: ${peerId}`);
         }
 
         io.to(peerId).emit(event, eventData);
-        // await redisClient.publish(`messages:${peerId}`, JSON.stringify(msg));
-        return console.log("SUCCESSFUL RELAY");
+        console.log(
+          `SUCCESSFUL RELAY (peerId: ${peerId}, event: ${event}, eventData: ${eventData})`
+        );
       } catch (error: any) {
-        console.error(`Error relaying message: ${error.message}`);
-        return console.log("Failed to relay message");
+        console.error(
+          `Error relaying message (payload: ${payload}): ${error.message}`
+        );
       }
     }
   );
@@ -233,7 +226,7 @@ const registerHandlers = async ({
           })
         );
 
-        console.log("UPDATE DRAW AREA", new Date().getSeconds());
+        console.log(`UPDATE DRAW AREA FOR EVENT ${eventId}`);
         io.to(eventId).emit("update-partial-current-round", { drawAreaSize });
       }
     }
@@ -279,8 +272,7 @@ const registerHandlers = async ({
               : round
           ),
         }));
-        console.log("UPDATE LINES", new Date().getSeconds());
-        // socket.to(eventId).emit("update-lines", { lines });
+        console.log(`UPDATE LINES FOR EVENT ${eventId}`);
       }
     }
   );
@@ -338,7 +330,7 @@ const registerHandlers = async ({
               }
             : team
         );
-        console.log("UPDATE MESSAGES", new Date().getSeconds());
+        console.log(`UPDATE MESSAGES FOR EVENT ${eventId}`);
         io.to(eventId).emit("update-partial-current-round", {
           messages: (currRound as Round).messages,
           correctAnswers: (currRound as Round).correctAnswers,
@@ -367,7 +359,7 @@ const registerHandlers = async ({
 
   socket.on("disconnect", (reason) => {
     disconnected(client);
-    console.log("A user disconnected: ", reason, playerId);
+    console.log(`A user (${playerId}) disconnected: ${reason}`);
   });
 };
 
