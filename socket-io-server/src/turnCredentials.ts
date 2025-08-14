@@ -18,10 +18,13 @@ export function generateTurnCredentials(
   hmac.update(username);
   const credential = hmac.digest('base64');
   
+  // Remove port if already included in turnServerUrl
+  const serverHost = turnServerUrl.includes(':') ? turnServerUrl : `${turnServerUrl}:3478`;
+  
   const urls = [
-    `stun:${turnServerUrl}:3478`,
-    `turn:${turnServerUrl}:3478`,
-    `turn:${turnServerUrl}:3478?transport=tcp`,
+    `stun:${serverHost}`,
+    `turn:${serverHost}`,
+    `turn:${serverHost}?transport=tcp`,
   ];
   
   return {
