@@ -319,14 +319,14 @@ export const useWebRTC = ({
 
   // Initialize WebRTC service with dynamic TURN credentials
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   useEffect(() => {
     const initializeWebRTCService = async () => {
       if (!webRTCServiceRef.current && eventId && !isInitialized) {
         try {
           const rtcConfig = await fetchTurnCredentials();
           console.log("Using dynamic TURN credentials:", rtcConfig);
-          
+
           webRTCServiceRef.current = new WebRTCService(
             userPeerData,
             iceTimeoutsRef,
@@ -347,9 +347,19 @@ export const useWebRTC = ({
         }
       }
     };
-    
+
     initializeWebRTCService();
-  }, [eventId, relay, onPeerData, updatePeerConnectionState, createOffer, handlePeerDisconnect, setupPeerConnectionListeners, setupDataChannelListeners, isInitialized]);
+  }, [
+    eventId,
+    relay,
+    onPeerData,
+    updatePeerConnectionState,
+    createOffer,
+    handlePeerDisconnect,
+    setupPeerConnectionListeners,
+    setupDataChannelListeners,
+    isInitialized,
+  ]);
 
   // Add peer
   const addPeer = useCallback(async (data: any) => {

@@ -11,6 +11,7 @@ import { initializeRedisClient } from "./redisClient.js";
 import { ServerState, TimersMap, Workers } from "./types.js";
 import { ClientStatuses } from "./enums.js";
 import { generateTurnCredentials } from "./turnCredentials.js";
+import cors from "cors";
 
 const PEER_TIMEOUT = 60000;
 
@@ -20,20 +21,20 @@ const server = http.createServer(app);
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
 
-app.get("/api/turn-credentials", (req, res) => {
+app.get("/api/turn-credentials", cors(), (req, res) => {
   const turnSecret = process.env.TURN_SECRET || "defaultsecret";
   const turnServerUrl = process.env.TURN_SERVER_IP_ADDRESS || "localhost";
-  
+
   const credentials = generateTurnCredentials(turnSecret, turnServerUrl);
-  
+
   res.json({
     iceServers: [
       {
         urls: credentials.urls,
         username: credentials.username,
         credential: credentials.credential,
-      }
-    ]
+      },
+    ],
   });
 });
 
