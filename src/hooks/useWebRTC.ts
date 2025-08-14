@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { WebRTCService } from "@/services/webrtc";
 import {
   ConnectionState,
   EventStatuses,
   RoundStatuses,
 } from "@/constants/enums";
-import { ICE_GATHERING_TIMEOUT, RTC_CONFIG } from "@/constants/constants";
+import { ICE_GATHERING_TIMEOUT } from "@/constants/constants";
 import {
   EventInfoType,
   RelayFunction,
@@ -16,6 +16,7 @@ import { useSelector } from "./useSelector";
 import { useActions } from "./useActions";
 import { BREAKOUT_ROOM, RESULTS } from "@/constants/routes";
 import { useNavigate } from "react-router-dom";
+import { fetchTurnCredentials } from "@/services/turnService";
 
 interface UseWebRTCParams {
   eventId: string | undefined;
@@ -316,23 +317,39 @@ export const useWebRTC = ({
     [updatePeerConnectionState]
   );
 
-  // Initialize WebRTC service
-  if (!webRTCServiceRef.current && eventId) {
-    webRTCServiceRef.current = new WebRTCService(
-      userPeerData,
-      iceTimeoutsRef,
-      RTC_CONFIG,
-      relay,
-      {
-        onPeerData,
-        updatePeerConnectionState,
-        createOffer,
-        handlePeerDisconnect,
-        setupPeerConnectionListeners,
-        setupDataChannelListeners,
+  // Initialize WebRTC service with dynamic TURN credentials
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  useEffect(() => {
+    const initializeWebRTCService = async () => {
+      if (!webRTCServiceRef.current && eventId && !isInitialized) {
+        try {
+          const rtcConfig = await fetchTurnCredentials();
+          console.log("Using dynamic TURN credentials:", rtcConfig);
+          
+          webRTCServiceRef.current = new WebRTCService(
+            userPeerData,
+            iceTimeoutsRef,
+            rtcConfig,
+            relay,
+            {
+              onPeerData,
+              updatePeerConnectionState,
+              createOffer,
+              handlePeerDisconnect,
+              setupPeerConnectionListeners,
+              setupDataChannelListeners,
+            }
+          );
+          setIsInitialized(true);
+        } catch (error) {
+          console.error("Error initializing WebRTC service:", error);
+        }
       }
-    );
-  }
+    };
+    
+    initializeWebRTCService();
+  }, [eventId, relay, onPeerData, updatePeerConnectionState, createOffer, handlePeerDisconnect, setupPeerConnectionListeners, setupDataChannelListeners, isInitialized]);
 
   // Add peer
   const addPeer = useCallback(async (data: any) => {
