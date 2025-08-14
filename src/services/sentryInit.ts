@@ -1,10 +1,5 @@
 import * as Sentry from "@sentry/react";
-import {
-  createRoutesFromChildren,
-  matchRoutes,
-  useLocation,
-  useNavigationType,
-} from "react-router-dom";
+import { createRoutesFromChildren, matchRoutes, useLocation, useNavigationType } from "react-router-dom";
 import { useEffect } from "react";
 import { Config } from "./config";
 
@@ -37,6 +32,7 @@ const sentryInit = () => {
   // Patch console.error to auto-capture errors
   const originalConsoleError = console.error;
   console.error = (...args) => {
+    console.log("ERRROR: ", ...args);
     originalConsoleError.apply(console, args); // Preserve original behavior
     args.forEach((arg) => {
       if (arg instanceof Error) {
