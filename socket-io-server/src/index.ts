@@ -49,9 +49,10 @@ async function updatePeerPresence(
     } else {
       await redisClient.del(key);
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error(
-      `Error updating peer presence (clientId: ${clientId}, isActive: ${isActive}): ${error.message}`
+      `Error updating peer presence (clientId: ${clientId}, isActive: ${isActive}): `,
+      error
     );
   }
 }
@@ -63,9 +64,10 @@ export async function isPeerAvailable(peerId: string): Promise<boolean> {
     if (!timestamp) return false;
     const lastSeen = parseInt(timestamp);
     return Date.now() - lastSeen < PEER_TIMEOUT;
-  } catch (error: any) {
+  } catch (error) {
     console.error(
-      `Error checking peer availability (peerId: ${peerId}): ${error.message}`
+      `Error checking peer availability (peerId: ${peerId}): `,
+      error
     );
     return false;
   }
@@ -79,10 +81,8 @@ export async function markClientStatus(
     const key = `client:status:${client.id}`;
     await redisClient.set(key, status);
     await updatePeerPresence(client.id, status === ClientStatuses.CONNECTED);
-  } catch (error: any) {
-    console.error(
-      `Error marking client (${client.id}) as ${status}: ${error.message}`
-    );
+  } catch (error) {
+    console.error(`Error marking client (${client.id}) as ${status}: `, error);
   }
 }
 
@@ -99,9 +99,10 @@ export async function storeIceCandidate(
     const key = `pending:ice:${peerId}`;
     await redisClient.rPush(key, JSON.stringify(data));
     await redisClient.expire(key, 300);
-  } catch (error: any) {
+  } catch (error) {
     console.error(
-      `Error storing ICE candidate (peerId: ${peerId}, data: ${JSON.parse(JSON.stringify(data))}): ${error.message}`
+      `Error storing ICE candidate (peerId: ${peerId}, data: ${JSON.parse(JSON.stringify(data))}): `,
+      error
     );
   }
 }
@@ -113,9 +114,10 @@ export async function getPendingIceCandidates(peerId: string): Promise<any[]> {
     await redisClient.del(key);
 
     return candidates.map((candidate) => JSON.parse(candidate));
-  } catch (error: any) {
+  } catch (error) {
     console.error(
-      `Error getting pending ICE candidates (peerId: ${peerId}): ${error.message}`
+      `Error getting pending ICE candidates (peerId: ${peerId}): `,
+      error
     );
     return [];
   }
@@ -164,10 +166,8 @@ export async function disconnected(client: any): Promise<void> {
 
     await redisClient.del(`client:status:${client.id}`);
     await redisClient.del(`peer:presence:${client.id}`);
-  } catch (error: any) {
-    console.error(
-      `Error during client (${client.id}) cleanup: ${error.message}`
-    );
+  } catch (error) {
+    console.error(`Error during client (${client.id}) cleanup: `, error);
   }
 }
 
@@ -207,8 +207,8 @@ async function cleanup(): Promise<void> {
       console.log("Server closed successfully");
       process.exit(0);
     });
-  } catch (err: any) {
-    console.error("Error during cleanup:", err);
+  } catch (error) {
+    console.error("Error during cleanup: ", error);
     process.exit(1);
   }
 }

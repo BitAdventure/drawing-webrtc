@@ -120,8 +120,8 @@ const registerHandlers = async ({
           io.to(user.id).emit("ice-candidate", candidateData);
         }
       }
-    } catch (error: any) {
-      console.error(`Error processing join (${job.data}): ${error.message}`);
+    } catch (error) {
+      console.error(`Error processing join (${job.data}): `, error);
     }
   }
 
@@ -147,8 +147,8 @@ const registerHandlers = async ({
         io.to(eventId).emit("event-data", serverState[eventId]);
       });
 
-      workers[eventId].on("error", (err: Error) => {
-        console.error(`WORKER ERROR for event ${eventId}: ${err.message}`);
+      workers[eventId].on("error", (error: Error) => {
+        console.error(`WORKER ERROR for event ${eventId}: `, error);
       });
     }
 
@@ -167,9 +167,10 @@ const registerHandlers = async ({
     );
 
     console.log(`JOIN COMPLETED FOR ${client.user}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error(
-      `Error adding join job (client: ${client}, event: ${eventId}): ${error.message}`
+      `Error adding join job (client: ${client}, event: ${eventId}): `,
+      error
     );
   }
   // finish peer join
@@ -200,10 +201,8 @@ const registerHandlers = async ({
         console.log(
           `SUCCESSFUL RELAY (peerId: ${peerId}, event: ${event}, eventData: ${eventData})`
         );
-      } catch (error: any) {
-        console.error(
-          `Error relaying message (payload: ${payload}): ${error.message}`
-        );
+      } catch (error) {
+        console.error(`Error relaying message (payload: ${payload}): `, error);
       }
     }
   );

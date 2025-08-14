@@ -347,10 +347,10 @@ export const handleProcessRoundResults = async ({
           console.log(`ROUND COMPLETED FOR EVENT ${eventId}`);
           io.to(eventId).emit("event-data", serverState[eventId]);
         }, 5000);
-      } catch (e) {
+      } catch (error) {
         console.error(
-          `Error processing round results (team: ${currentTeam}, currentRound: ${currRound})`,
-          e
+          `Error processing round results (team: ${currentTeam}, currentRound: ${currRound}): `,
+          error
         );
       }
     }

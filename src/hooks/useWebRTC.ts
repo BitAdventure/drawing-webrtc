@@ -108,7 +108,7 @@ export const useWebRTC = ({
         }
       } catch (error) {
         console.error(
-          `Error processing peer data (msg: ${data}, peerId: ${peerId}):`,
+          `Error processing peer data (msg: ${data}, peerId: ${peerId}): `,
           error
         );
       }
@@ -194,7 +194,7 @@ export const useWebRTC = ({
               }, 1000);
             }
           } catch (error) {
-            console.error(`Error restarting ICE for peer ${peerId}:`, error);
+            console.error(`Error restarting ICE for peer ${peerId}: `, error);
           }
 
           // If ICE restart fails or isn't available, then close and recreate
@@ -242,7 +242,7 @@ export const useWebRTC = ({
                 peer.restartIce();
               } catch (error) {
                 console.error(
-                  `Error during ICE restart for peer ${peerId}:`,
+                  `Error during ICE restart for peer ${peerId}: `,
                   error
                 );
                 handlePeerDisconnect(peerId);
@@ -261,7 +261,7 @@ export const useWebRTC = ({
                   peer.restartIce();
                 } catch (error) {
                   console.error(
-                    `Error during ICE restart for peer ${peerId}:`,
+                    `Error during ICE restart for peer ${peerId}: `,
                     error
                   );
                   handlePeerDisconnect(peerId);
@@ -285,7 +285,7 @@ export const useWebRTC = ({
 
       // Modify this to be more tolerant of individual ICE candidate errors
       peer.onicecandidateerror = (error) => {
-        console.error(`Peer connection error for ${peerId}:`, error);
+        console.error(`Peer connection error for ${peerId}: `, error);
         // Don't immediately disconnect on ICE candidate errors
         // Let the iceconnectionstatechange handler manage this
       };
@@ -309,7 +309,7 @@ export const useWebRTC = ({
       };
 
       channel.onerror = (error) => {
-        console.error(`Data channel error for ${peerId}:`, error);
+        console.error(`Data channel error for ${peerId}: `, error);
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       };
     },
@@ -340,7 +340,7 @@ export const useWebRTC = ({
       console.log("ADD PEER IN WEBRTC SERVICE: ", webRTCServiceRef.current);
       webRTCServiceRef.current?.createPeer(data.peer.id, data.offer);
     } catch (error) {
-      console.error("Error adding peer:", error);
+      console.error("Error adding peer: ", error);
     }
   }, []);
 
@@ -349,7 +349,7 @@ export const useWebRTC = ({
     try {
       webRTCServiceRef.current?.removePeer(payload.peer.id);
     } catch (error) {
-      console.error(`Error removing peer ${payload?.peer?.id}:`, error);
+      console.error(`Error removing peer ${payload?.peer?.id}: `, error);
     }
   }, []);
 
@@ -364,7 +364,7 @@ export const useWebRTC = ({
         );
       }
     } catch (error) {
-      console.error("Error handling session description:", error);
+      console.error("Error handling session description: ", error);
     }
   }, []);
 

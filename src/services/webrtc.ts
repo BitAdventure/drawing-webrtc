@@ -135,7 +135,7 @@ export class WebRTCService {
       }
     } catch (error) {
       console.error(
-        `Error handling session description (peerId: ${peerId}):`,
+        `Error handling session description (peerId: ${peerId}): `,
         error
       );
       this.handlers.updatePeerConnectionState(
@@ -216,7 +216,7 @@ export class WebRTCService {
         try {
           channels[peerId].send(data);
         } catch (error) {
-          console.error(`Error broadcasting to peer ${peerId}:`, error);
+          console.error(`Error broadcasting to peer ${peerId}: `, error);
           this.handlers.updatePeerConnectionState(
             peerId,
             ConnectionState.DISCONNECTED

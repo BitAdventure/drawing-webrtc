@@ -9,7 +9,6 @@ import sentryInit from "./services/sentryInit";
 
 import "./index.css";
 
-console.log(Config.MODE === "production");
 Config.MODE === "production" && sentryInit();
 setupInterceptors(store);
 
@@ -18,5 +17,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <Provider store={store}>
       <App />
     </Provider>
-  </Sentry.ErrorBoundary>,
+  </Sentry.ErrorBoundary>
 );
