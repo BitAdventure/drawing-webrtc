@@ -5,9 +5,6 @@ interface IConfig {
   API_HASURA_BASE_URL: string;
   UNIVERSAL_LOGIN_URL: string;
   SOCKET_IO_SERVER_URL: string;
-  TURN_SERVER_IP_ADDRESS: string;
-  TURN_SERVER_USERNAME: string;
-  TURN_SERVER_CREDENTIAL: string;
   SENTRY_DSN: string;
 }
 
@@ -27,14 +24,5 @@ export const Config: IConfig = {
   SOCKET_IO_SERVER_URL:
     import.meta.env.VITE_SOCKET_IO_SERVER_URL ||
     window._env_.VITE_SOCKET_IO_SERVER_URL,
-  TURN_SERVER_IP_ADDRESS:
-    import.meta.env.VITE_TURN_SERVER_IP_ADDRESS ||
-    window._env_.VITE_TURN_SERVER_IP_ADDRESS,
-  TURN_SERVER_USERNAME:
-    import.meta.env.VITE_TURN_SERVER_USERNAME ||
-    window._env_.VITE_TURN_SERVER_USERNAME,
-  TURN_SERVER_CREDENTIAL:
-    import.meta.env.VITE_TURN_SERVER_CREDENTIAL ||
-    window._env_.VITE_TURN_SERVER_CREDENTIAL,
   SENTRY_DSN: import.meta.env.VITE_SENTRY_DSN || window._env_.VITE_SENTRY_DSN,
 };

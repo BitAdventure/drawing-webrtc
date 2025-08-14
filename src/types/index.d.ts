@@ -9,9 +9,6 @@ declare global {
       VITE_API_WEB_SOCKET_URL?: string;
       VITE_UNIVERSAL_LOGIN_URL?: string;
       VITE_SOCKET_IO_SERVER_URL?: string;
-      VITE_TURN_SERVER_IP_ADDRESS?: string;
-      VITE_TURN_SERVER_USERNAME?: string;
-      VITE_TURN_SERVER_CREDENTIAL?: string;
       VITE_SENTRY_DSN?: string;
     };
   }
