@@ -128,10 +128,11 @@ const GameSlice = createSlice({
             (state.eventInfo?.team.players.length || 0) - 1;
       }
 
-      state.currentRound = {
-        ...state.currentRound!,
-        ...payload,
-      };
+      if (state.currentRound)
+        state.currentRound = {
+          ...state.currentRound,
+          ...payload,
+        };
 
       if (state.choiceWordLoading) state.choiceWordLoading = false;
     },
