@@ -122,7 +122,7 @@ export const handleStartRound = ({
   timersMap,
   eventId,
   roundId,
-  updates,
+  word,
   clients,
   workers,
 }: HandleStartRoundArgs) => {
@@ -138,7 +138,9 @@ export const handleStartRound = ({
 
           roundData = {
             ...round,
-            ...updates,
+            word,
+            startTime: new Date().getTime(),
+            status: RoundStatuses.ONGOING,
           };
 
           return roundData;

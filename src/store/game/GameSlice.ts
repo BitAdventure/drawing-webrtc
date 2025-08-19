@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
+  getTimeDifference,
   updateAvatar,
   getWordCategories,
   updateGameSettings,
@@ -44,6 +45,9 @@ export type GameInitialStateType = {
   isAllPlayersGuessTheWord: boolean;
   roundResults: RoundResults;
   choiceWordLoading: boolean;
+  timeDifference: number;
+  timeDifferenceLoading: boolean;
+  timeDifferenceError: boolean;
 };
 
 export const initialState: GameInitialStateType = {
@@ -69,6 +73,9 @@ export const initialState: GameInitialStateType = {
   isAllPlayersGuessTheWord: false,
   roundResults: [],
   choiceWordLoading: false,
+  timeDifference: 0,
+  timeDifferenceLoading: true,
+  timeDifferenceError: false,
 };
 
 const GameSlice = createSlice({
@@ -90,7 +97,11 @@ const GameSlice = createSlice({
 
         state.isAllPlayersGuessTheWord = false;
 
-        state.currentRound = currRound;
+        state.currentRound = {
+          ...currRound,
+          startTime:
+            currRound.startTime && currRound.startTime + state.timeDifference,
+        };
       } else if (
         state.allWordsCategoryId &&
         modifiedEventInfo.gameInformation.categories.includes(
@@ -116,16 +127,20 @@ const GameSlice = createSlice({
           payload.correctAnswers.length ===
             (state.eventInfo?.team.players.length || 0) - 1;
       }
-      if (state.currentRound)
-        state.currentRound = {
-          ...state.currentRound,
-          ...payload,
-        };
+
+      state.currentRound = {
+        ...state.currentRound!,
+        ...payload,
+      };
 
       if (state.choiceWordLoading) state.choiceWordLoading = false;
     },
     updateCurrentRound: (state, { payload }: { payload: RoundType }) => {
-      state.currentRound = payload;
+      state.currentRound = {
+        ...payload,
+        startTime:
+          payload.startTime && payload.startTime + state.timeDifference,
+      };
     },
     updateRoundResults: (
       state,
@@ -150,6 +165,18 @@ const GameSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    builder.addCase(getTimeDifference.pending, (state) => {
+      state.timeDifferenceError = false;
+      state.timeDifferenceLoading = true;
+    });
+    builder.addCase(getTimeDifference.fulfilled, (state, { payload }) => {
+      state.timeDifference = payload;
+      state.timeDifferenceLoading = false;
+    });
+    builder.addCase(getTimeDifference.rejected, (state) => {
+      state.timeDifferenceError = true;
+      state.timeDifferenceLoading = false;
+    });
     builder.addCase(updateAvatar.pending, (state) => {
       state.playerAvatarError = false;
       state.playerAvatarLoading = true;
@@ -217,6 +244,7 @@ const GameSlice = createSlice({
 export const GameReducer = GameSlice.reducer;
 export const GameActions = {
   ...GameSlice.actions,
+  getTimeDifference,
   updateAvatar,
   getWordCategories,
   updateGameSettings,

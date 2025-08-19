@@ -7,38 +7,32 @@ import TimerIcon from "@/assets/icons/timer-icon.svg?react";
 import styles from "./style.module.css";
 
 type PropsType = {
-  startTime: number | null;
   drawTime: number;
   isDrawer: boolean;
   roundInfo: RoundType;
 };
 
-const Timer: React.FC<PropsType> = ({
-  startTime,
-  drawTime,
-  isDrawer,
-  roundInfo,
-}) => {
+const Timer: React.FC<PropsType> = ({ drawTime, isDrawer, roundInfo }) => {
   const [timerId, setTimerId] = useState(0);
   const isAllPlayersGuessTheWord = useSelector(
     (state) => state.game.isAllPlayersGuessTheWord
   );
 
   const getTimeRemaining = useCallback(() => {
-    if (!startTime) {
+    if (!roundInfo.startTime) {
       return drawTime;
     }
     return Math.ceil(
-      (startTime + drawTime * 1000 - new Date().getTime()) / 1000
+      (roundInfo.startTime + drawTime * 1000 - new Date().getTime()) / 1000
     );
-  }, [drawTime, startTime]);
+  }, [drawTime, roundInfo.startTime]);
 
   const [timeRemaining, setTimeRemaining] = useState<number>(
     getTimeRemaining() > 0 ? getTimeRemaining() : 0
   );
 
   useEffect(() => {
-    if (startTime) {
+    if (roundInfo.startTime) {
       setTimerId(
         window.setInterval(() => {
           const timeRemaining = getTimeRemaining();
@@ -49,7 +43,7 @@ const Timer: React.FC<PropsType> = ({
       const currTimeRemaining = getTimeRemaining();
       setTimeRemaining(currTimeRemaining > 0 ? currTimeRemaining : 0);
     }
-  }, [startTime, getTimeRemaining]);
+  }, [roundInfo.startTime, getTimeRemaining]);
 
   useEffect(() => {
     timerId &&

@@ -233,13 +233,7 @@ const registerHandlers = async ({
 
   socket.on(
     "start-round",
-    ({
-      roundId,
-      updates,
-    }: {
-      roundId: string;
-      updates: { word: Word; startTime: number; status: RoundStatuses };
-    }) => {
+    ({ roundId, word }: { roundId: string; word: Word }) => {
       // clearTimeout(timersMap[`${AUTO_PICK_WORD_PREFIX}${roundId}`]);
       handleStartRound({
         io,
@@ -249,7 +243,7 @@ const registerHandlers = async ({
         timersMap,
         eventId,
         roundId,
-        updates,
+        word,
         clients,
         workers,
       });

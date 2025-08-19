@@ -21,6 +21,11 @@ const server = http.createServer(app);
 app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
 
+app.post("/time", cors(), (_: any, res: any) => {
+  const time = new Date().toISOString();
+  return res.json({ time });
+});
+
 app.get("/api/turn-credentials", cors(), (req, res) => {
   const turnSecret = process.env.TURN_SECRET || "defaultsecret";
   const turnServerUrl = process.env.TURN_SERVER_IP_ADDRESS || "localhost";

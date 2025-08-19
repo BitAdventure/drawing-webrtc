@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSelector } from "@/hooks/useSelector";
 import playerIcons from "@/services/player-icons";
-import { RoundStatuses } from "@/constants/enums";
 import { Socket } from "socket.io-client";
 import { useActions } from "@/hooks/useActions";
 import Word from "./word/Word";
@@ -57,11 +56,7 @@ const WordChoiceWaiting: React.FC<PropsType> = ({
       updateChoiceWordLoading(true);
       socket.emit("start-round", {
         roundId: roundInfo.id,
-        updates: {
-          word,
-          startTime: new Date().getTime(),
-          status: RoundStatuses.ONGOING,
-        },
+        word,
       });
     },
     [roundInfo.id, socket, updateChoiceWordLoading]

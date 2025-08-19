@@ -6,7 +6,6 @@ import { RoundType } from "@/constants/types";
 import styles from "./style.module.css";
 
 export type HeaderPropsType = {
-  startTime: number | null;
   drawTime: number;
   roundInfo: RoundType;
   isDrawer: boolean;
@@ -14,7 +13,6 @@ export type HeaderPropsType = {
 };
 
 const Header: React.FC<HeaderPropsType> = ({
-  startTime,
   drawTime,
   roundInfo,
   isDrawer,
@@ -22,12 +20,7 @@ const Header: React.FC<HeaderPropsType> = ({
 }) => (
   <header className={styles.headerWrap}>
     <div className={styles.timerWrap}>
-      <Timer
-        startTime={startTime}
-        drawTime={drawTime}
-        isDrawer={isDrawer}
-        roundInfo={roundInfo}
-      />
+      <Timer drawTime={drawTime} isDrawer={isDrawer} roundInfo={roundInfo} />
     </div>
     <div className={styles.drawWordWrap}>
       <WordArea

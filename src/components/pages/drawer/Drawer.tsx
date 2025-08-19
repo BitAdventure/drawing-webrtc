@@ -78,7 +78,11 @@ const Drawer: React.FC = () => {
     // });
 
     newSocket.on("event-data", (eventInfo: any) => {
-      eventInfo && updateStoreEventInfo({ eventInfo, withRoundsUpdate: true });
+      eventInfo &&
+        updateStoreEventInfo({
+          eventInfo,
+          withRoundsUpdate: true,
+        });
       setLoading(false);
     });
 
@@ -135,7 +139,6 @@ const Drawer: React.FC = () => {
     return () => {
       newSocket.disconnect();
     };
-    // eslint-disable-next-line
   }, [newSocket]);
 
   useEffect(
@@ -191,7 +194,6 @@ const Drawer: React.FC = () => {
     : !!currentRound && !!eventInfo && currentUser && (
         <div className={styles.contentWrap}>
           <Header
-            startTime={currentRound.startTime}
             drawTime={eventInfo.gameInformation.drawTime}
             roundInfo={currentRound}
             isDrawer={isDrawer}

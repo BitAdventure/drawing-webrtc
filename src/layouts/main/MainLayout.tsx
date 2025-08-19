@@ -25,8 +25,6 @@ const MainLayout = () => {
       } else {
         getAuth();
       }
-      // then do what you need after event id validation
-      // await getEventTheme(id!);
     })();
   });
 

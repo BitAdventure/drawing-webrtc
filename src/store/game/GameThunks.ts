@@ -8,6 +8,38 @@ import { GameInfoType, PlayerResultType, PlayerType } from "@/constants/types";
 import { toast } from "react-toastify";
 import { RootState } from "@/hooks/useSelector";
 import { EventStatuses } from "@/constants/enums";
+import { Config } from "@/services/config";
+
+export const getTimeDifference = createAsyncThunk<
+  number,
+  void,
+  { rejectValue: string }
+>("game/get-time-difference", async (_, { rejectWithValue }) => {
+  const reqStartTime = new Date().getTime();
+
+  return await fetch(`${Config.SOCKET_IO_SERVER_URL}/time`, {
+    method: "POST",
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      console.log(
+        "SERVER TIME FROM DIRECT FETCH: ",
+        new Date(res.time),
+        res.time
+      );
+      console.log(
+        "LOCAL TIME FROM DIRECT FETCH: ",
+        new Date(),
+        new Date().toISOString()
+      );
+      const reqEndTime = new Date().getTime();
+
+      const actualAvgTime = (reqStartTime + reqEndTime) / 2;
+
+      return actualAvgTime - new Date(res.time).getTime();
+    })
+    .catch((e) => rejectWithValue(e.message));
+});
 
 export const updateAvatar = createAsyncThunk<
   string,

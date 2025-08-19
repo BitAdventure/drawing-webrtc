@@ -115,7 +115,7 @@ export type StartRoundUpdates = {
 export type HandleStartRoundArgs = RegisterHandlersProps & {
   eventId: string;
   roundId: string;
-  updates: StartRoundUpdates;
+  word: Word;
 };
 
 export type TimersMap = { [key: string]: NodeJS.Timeout };
