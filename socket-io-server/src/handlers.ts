@@ -98,7 +98,11 @@ const registerHandlers = async ({
       );
 
       for (const peerId of peerIds) {
+        console.log(`HANDLE JOIN PEER: FETCHED FROM REDIS PEER: ${peerId}, `);
         if (user.id !== peerId && (await isPeerAvailable(peerId))) {
+          console.log(
+            `HANDLE JOIN PEER: PEER AVAILABLE AND EMIT add-peer EVENT: ${peerId}`
+          );
           io.to(peerId).emit("add-peer", {
             peer: user,
             eventId,
@@ -120,8 +124,11 @@ const registerHandlers = async ({
           io.to(user.id).emit("ice-candidate", candidateData);
         }
       }
-    } catch (error) {
-      console.error(`Error processing join (${job.data}): `, error);
+    } catch (error: any) {
+      console.error(
+        `Error processing join (${JSON.stringify(job.data)}): `,
+        error.message
+      );
     }
   }
 
@@ -166,11 +173,10 @@ const registerHandlers = async ({
       }
     );
 
-    console.log(`JOIN COMPLETED FOR ${client.user}`);
-  } catch (error) {
+    console.log(`JOIN COMPLETED FOR ${JSON.stringify(client.user)}`);
+  } catch (error: any) {
     console.error(
-      `Error adding join job (client: ${client}, event: ${eventId}): `,
-      error
+      `Error adding join job (client: ${JSON.stringify(client)}, event: ${eventId}): ${error.message}`
     );
   }
   // finish peer join
@@ -191,7 +197,7 @@ const registerHandlers = async ({
           if (event === "ice-candidate") {
             await storeIceCandidate(peerId, eventData);
             return console.log(
-              `SUCCESSFUL ICE CANDIDATE RELAY (peerId: ${peerId}, eventData: ${eventData})`
+              `SUCCESSFUL ICE CANDIDATE STORE (peerId: ${peerId}, eventData: ${JSON.stringify(eventData)})`
             );
           }
           return console.log(`Peer not available: ${peerId}`);
@@ -199,10 +205,13 @@ const registerHandlers = async ({
 
         io.to(peerId).emit(event, eventData);
         console.log(
-          `SUCCESSFUL RELAY (peerId: ${peerId}, event: ${event}, eventData: ${eventData})`
+          `SUCCESSFUL RELAY (peerId: ${peerId}, event: ${event}, eventData: ${JSON.stringify(eventData)})`
         );
-      } catch (error) {
-        console.error(`Error relaying message (payload: ${payload}): `, error);
+      } catch (error: any) {
+        console.error(
+          `Error relaying message (payload: ${JSON.stringify(payload)}): `,
+          error.message
+        );
       }
     }
   );
@@ -211,21 +220,21 @@ const registerHandlers = async ({
     "update-drawarea",
     ({ roundId, drawAreaSize }: { roundId: string; drawAreaSize: string }) => {
       if (serverState[eventId]) {
-        serverState[eventId].teams = serverState[eventId].teams.map(
-          (team: Team) => ({
-            ...team,
-            rounds: team.rounds.map((round) =>
-              round.id === roundId
-                ? {
-                    ...round,
-                    drawAreaSize,
-                  }
-                : round
-            ),
-          })
-        );
+        serverState[eventId].teams = serverState[eventId].teams.map((team) => ({
+          ...team,
+          rounds: team.rounds.map((round) =>
+            round.id === roundId
+              ? {
+                  ...round,
+                  drawAreaSize,
+                }
+              : round
+          ),
+        }));
 
-        console.log(`UPDATE DRAW AREA FOR EVENT ${eventId}`);
+        console.log(
+          `UPDATE DRAW AREA FOR EVENT ${eventId} BY ${client.user.staticId}`
+        );
         io.to(eventId).emit("update-partial-current-round", { drawAreaSize });
       }
     }
@@ -265,7 +274,9 @@ const registerHandlers = async ({
               : round
           ),
         }));
-        console.log(`UPDATE LINES FOR EVENT ${eventId}`);
+        console.log(
+          `UPDATE LINES FOR EVENT ${eventId} BY ${JSON.stringify(client)}`
+        );
       }
     }
   );
@@ -323,7 +334,9 @@ const registerHandlers = async ({
               }
             : team
         );
-        console.log(`UPDATE MESSAGES FOR EVENT ${eventId}`);
+        console.log(
+          `UPDATE MESSAGES FOR EVENT ${eventId} BY ${client.user.staticId}`
+        );
         io.to(eventId).emit("update-partial-current-round", {
           messages: (currRound as Round).messages,
           correctAnswers: (currRound as Round).correctAnswers,
@@ -352,7 +365,9 @@ const registerHandlers = async ({
 
   socket.on("disconnect", (reason) => {
     disconnected(client);
-    console.log(`A user (${playerId}) disconnected: ${reason}`);
+    console.log(
+      `A user (playerId: ${playerId}, client: ${JSON.stringify(client)}) disconnected: ${reason}`
+    );
   });
 };
 

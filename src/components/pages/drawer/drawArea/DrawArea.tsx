@@ -91,11 +91,19 @@ const DrawArea: React.FC<PropsType> = ({
         if (isDrawer) {
           setCanvasWidth(drawAreaWidth);
           setCanvasHeight(drawAreaHeight);
-
-          return socket.emit("update-drawarea", {
-            roundId: roundInfo.id,
-            drawAreaSize: `${drawAreaWidth}, ${drawAreaHeight}`,
-          });
+          console.log(
+            "SOCKET EMIT DRAWER DRAWAREA SIZE UPDATE WITH ROUND STATUS: ",
+            roundInfo.status
+          );
+          // prevent resize update when status is show results or completed
+          return (
+            (roundInfo.status === RoundStatuses.ONGOING ||
+              roundInfo.status === RoundStatuses.UPCOMING) &&
+            socket.emit("update-drawarea", {
+              roundId: roundInfo.id,
+              drawAreaSize: `${drawAreaWidth}, ${drawAreaHeight}`,
+            })
+          );
         }
 
         const [drawAreaStoreWidth, drawAreaStoreHeight] = roundInfo.drawAreaSize
@@ -116,6 +124,7 @@ const DrawArea: React.FC<PropsType> = ({
     roundInfo.id,
     updateGuesserCanvasSize,
     roundInfo.drawAreaSize,
+    roundInfo.status,
     socket,
   ]);
 
@@ -146,7 +155,6 @@ const DrawArea: React.FC<PropsType> = ({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-
     // eslint-disable-next-line
   }, [roundInfo.drawAreaSize, isDrawer, roundInfo.id]);
 

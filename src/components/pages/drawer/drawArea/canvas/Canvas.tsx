@@ -60,15 +60,15 @@ const Canvas: React.FC<PropsType> = ({
   useEffect(() => {
     if (
       !isDrawing.current &&
-      (!isDrawer || currentRound.status === RoundStatuses.UPCOMING)
+      ((!isDrawer && currentRound.status !== RoundStatuses.SHOW_RESULT) || // prevent lines update if current round object was changed and currentRound.lines triggers this use effect and handle update lines triggers because current user it's drawer in new round
+        currentRound.status === RoundStatuses.UPCOMING)
     )
       setLines([...currentRound.lines]); // prevent canvas lines updating for drawer
   }, [isDrawer, currentRound.status, currentRound.lines]);
 
   useEffect(() => {
-    isDrawer && currentRound.id && setLines([...currentRound.lines]); // for case if player disconnect and recconnect on next round where he is drawer (because for drawer lines doesnt update in useeffect above)
-    // eslint-disable-next-line
-  }, [currentRound.id, isDrawer]);
+    isDrawer && setLines([...currentRound.lines]); // for case if player disconnect and recconnect on next round where he is drawer (because for drawer lines doesnt update in useeffect above)
+  }, [currentRound.id]);
 
   const handleMouseDown = useCallback(
     (e: any) => {
@@ -125,10 +125,8 @@ const Canvas: React.FC<PropsType> = ({
     () => setThickness((prev) => (prev + 1) % 3),
     [setThickness]
   );
-  const handleChangeColor = useCallback(
-    (hex: string) => setCurrColor(hex),
-    [setCurrColor]
-  );
+
+  const handleChangeColor = useCallback((hex: string) => setCurrColor(hex), []);
 
   const handleUndoAction = useCallback(
     () => setLines((prev) => prev.slice(0, prev.length - 1)),

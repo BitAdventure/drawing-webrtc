@@ -131,6 +131,7 @@ const GameSlice = createSlice({
       if (state.currentRound)
         state.currentRound = {
           ...state.currentRound,
+          lines: state.currentRound.lines, // to prevent re-render and local lines update
           ...payload,
         };
 

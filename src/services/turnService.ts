@@ -28,10 +28,10 @@ export async function fetchTurnCredentials(): Promise<RTCConfiguration> {
       iceServers: data.iceServers,
       iceCandidatePoolSize: 10,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error(
       "Error fetching TURN credentials, using fallback configuration:",
-      error
+      error.message
     );
 
     return {

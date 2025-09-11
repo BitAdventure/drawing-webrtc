@@ -74,29 +74,41 @@ async function updatePeerPresence(
     } else {
       await redisClient.del(key);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(
-      `Error updating peer presence (clientId: ${clientId}, isActive: ${isActive}): `,
-      error
+      `Error updating peer presence (clientId: ${clientId}, isActive: ${isActive}): ${error.message}`
     );
   }
 }
 
 export async function isPeerAvailable(peerId: string): Promise<boolean> {
   try {
-    const key = `peer:presence:${peerId}`;
-    const timestamp = await redisClient.get(key);
-    if (!timestamp) return false;
-    const lastSeen = parseInt(timestamp);
-    return Date.now() - lastSeen < PEER_TIMEOUT;
-  } catch (error) {
+    const key = `client:status:${peerId}`;
+    const clientStatus = await redisClient.get(key);
+    return clientStatus === ClientStatuses.CONNECTED;
+  } catch (error: any) {
     console.error(
       `Error checking peer availability (peerId: ${peerId}): `,
-      error
+      error.message
     );
     return false;
   }
 }
+// export async function isPeerAvailable(peerId: string): Promise<boolean> {
+//   try {
+//     const key = `peer:presence:${peerId}`;
+//     const timestamp = await redisClient.get(key);
+//     if (!timestamp) return false;
+//     const lastSeen = parseInt(timestamp);
+//     return Date.now() - lastSeen < PEER_TIMEOUT;
+//   } catch (error) {
+//     console.error(
+//       `Error checking peer availability (peerId: ${peerId}): `,
+//       error
+//     );
+//     return false;
+//   }
+// }
 
 export async function markClientStatus(
   client: any,
@@ -106,8 +118,11 @@ export async function markClientStatus(
     const key = `client:status:${client.id}`;
     await redisClient.set(key, status);
     await updatePeerPresence(client.id, status === ClientStatuses.CONNECTED);
-  } catch (error) {
-    console.error(`Error marking client (${client.id}) as ${status}: `, error);
+  } catch (error: any) {
+    console.error(
+      `Error marking client (${client.id}) as ${status}: `,
+      error.message
+    );
   }
 }
 
@@ -124,10 +139,10 @@ export async function storeIceCandidate(
     const key = `pending:ice:${peerId}`;
     await redisClient.rPush(key, JSON.stringify(data));
     await redisClient.expire(key, 300);
-  } catch (error) {
+  } catch (error: any) {
     console.error(
-      `Error storing ICE candidate (peerId: ${peerId}, data: ${JSON.parse(JSON.stringify(data))}): `,
-      error
+      `Error storing ICE candidate (peerId: ${peerId}, data: ${JSON.stringify(data)}): `,
+      error.message
     );
   }
 }
@@ -139,10 +154,10 @@ export async function getPendingIceCandidates(peerId: string): Promise<any[]> {
     await redisClient.del(key);
 
     return candidates.map((candidate) => JSON.parse(candidate));
-  } catch (error) {
+  } catch (error: any) {
     console.error(
       `Error getting pending ICE candidates (peerId: ${peerId}): `,
-      error
+      error.message
     );
     return [];
   }
@@ -191,8 +206,11 @@ export async function disconnected(client: any): Promise<void> {
 
     await redisClient.del(`client:status:${client.id}`);
     await redisClient.del(`peer:presence:${client.id}`);
-  } catch (error) {
-    console.error(`Error during client (${client.id}) cleanup: `, error);
+  } catch (error: any) {
+    console.error(
+      `Error during client (${client.id}) cleanup: `,
+      error.message
+    );
   }
 }
 
@@ -232,8 +250,8 @@ async function cleanup(): Promise<void> {
       console.log("Server closed successfully");
       process.exit(0);
     });
-  } catch (error) {
-    console.error("Error during cleanup: ", error);
+  } catch (error: any) {
+    console.error("Error during cleanup: ", error.message);
     process.exit(1);
   }
 }

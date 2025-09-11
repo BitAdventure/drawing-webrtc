@@ -107,9 +107,11 @@ export const useWebRTC = ({
             break;
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(
-          `Error processing peer data (msg: ${data}, peerId: ${peerId}): `,
+          `Error processing peer data (msg: ${JSON.stringify(
+            data
+          )}, peerId: ${peerId}): `,
           error
         );
       }
@@ -139,8 +141,8 @@ export const useWebRTC = ({
             handlePeerDisconnect(peerId);
           }
         }, ICE_GATHERING_TIMEOUT);
-      } catch (error) {
-        console.error(`Error creating offer for ${peerId}: `, error);
+      } catch (error: any) {
+        console.error(`Error creating offer for ${peerId}: `, error.message);
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       }
     },
@@ -194,8 +196,11 @@ export const useWebRTC = ({
                 }
               }, 1000);
             }
-          } catch (error) {
-            console.error(`Error restarting ICE for peer ${peerId}: `, error);
+          } catch (error: any) {
+            console.error(
+              `Error restarting ICE for peer ${peerId}: `,
+              error.message
+            );
           }
 
           // If ICE restart fails or isn't available, then close and recreate
@@ -241,10 +246,10 @@ export const useWebRTC = ({
               try {
                 console.log(`Attempting ICE restart for peer ${peerId}`);
                 peer.restartIce();
-              } catch (error) {
+              } catch (error: any) {
                 console.error(
                   `Error during ICE restart for peer ${peerId}: `,
-                  error
+                  error.message
                 );
                 handlePeerDisconnect(peerId);
               }
@@ -260,10 +265,10 @@ export const useWebRTC = ({
                 );
                 try {
                   peer.restartIce();
-                } catch (error) {
+                } catch (error: any) {
                   console.error(
                     `Error during ICE restart for peer ${peerId}: `,
-                    error
+                    error.message
                   );
                   handlePeerDisconnect(peerId);
                 }
@@ -285,8 +290,8 @@ export const useWebRTC = ({
       };
 
       // Modify this to be more tolerant of individual ICE candidate errors
-      peer.onicecandidateerror = (error) => {
-        console.error(`Peer connection error for ${peerId}: `, error);
+      peer.onicecandidateerror = (error: any) => {
+        console.error(`Peer connection error for ${peerId}: `, error.message);
         // Don't immediately disconnect on ICE candidate errors
         // Let the iceconnectionstatechange handler manage this
       };
@@ -309,8 +314,8 @@ export const useWebRTC = ({
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       };
 
-      channel.onerror = (error) => {
-        console.error(`Data channel error for ${peerId}: `, error);
+      channel.onerror = (error: any) => {
+        console.error(`Data channel error for ${peerId}: `, error.message);
         updatePeerConnectionState(peerId, ConnectionState.DISCONNECTED);
       };
     },
@@ -325,7 +330,10 @@ export const useWebRTC = ({
       if (!webRTCServiceRef.current && eventId && !isInitialized) {
         try {
           const rtcConfig = await fetchTurnCredentials();
-          console.log("Using dynamic TURN credentials:", rtcConfig);
+          console.log(
+            "Using dynamic TURN credentials:",
+            JSON.stringify(rtcConfig)
+          );
 
           webRTCServiceRef.current = new WebRTCService(
             userPeerData,
@@ -342,8 +350,8 @@ export const useWebRTC = ({
             }
           );
           setIsInitialized(true);
-        } catch (error) {
-          console.error("Error initializing WebRTC service:", error);
+        } catch (error: any) {
+          console.error("Error initializing WebRTC service: ", error.message);
         }
       }
     };
@@ -366,8 +374,8 @@ export const useWebRTC = ({
     try {
       console.log("ADD PEER IN WEBRTC SERVICE: ", webRTCServiceRef.current);
       webRTCServiceRef.current?.createPeer(data.peer.id, data.offer);
-    } catch (error) {
-      console.error("Error adding peer: ", error);
+    } catch (error: any) {
+      console.error("Error adding peer: ", error.message);
     }
   }, []);
 
@@ -375,8 +383,11 @@ export const useWebRTC = ({
   const removePeer = useCallback((payload: any) => {
     try {
       webRTCServiceRef.current?.removePeer(payload.peer.id);
-    } catch (error) {
-      console.error(`Error removing peer ${payload?.peer?.id}: `, error);
+    } catch (error: any) {
+      console.error(
+        `Error removing peer ${payload?.peer?.id}: `,
+        error.message
+      );
     }
   }, []);
 
@@ -384,14 +395,14 @@ export const useWebRTC = ({
   const sessionDescription = useCallback(async (payload: any) => {
     try {
       if (webRTCServiceRef.current) {
-        console.log(payload);
+        console.log(`SESSION DESCRIPTION: ${payload} TO ${payload.peer.id}`);
         await webRTCServiceRef.current.handleSessionDescription(
           payload.peer.id,
           payload.data
         );
       }
-    } catch (error) {
-      console.error("Error handling session description: ", error);
+    } catch (error: any) {
+      console.error("Error handling session description: ", error.message);
     }
   }, []);
 
@@ -404,8 +415,11 @@ export const useWebRTC = ({
           payload.data
         );
       }
-    } catch (error) {
-      console.error(`Error handling ICE candidate ${payload}: `, error);
+    } catch (error: any) {
+      console.error(
+        `Error handling ICE candidate ${JSON.stringify(payload)}: `,
+        error.message
+      );
     }
   }, []);
 

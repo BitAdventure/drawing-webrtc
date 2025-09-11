@@ -11,7 +11,7 @@ import { io, Socket } from "socket.io-client";
 import TokenService from "@/services/tokenService";
 import { Config } from "@/services/config";
 import { useWebRTC } from "@/hooks/useWebRTC";
-import { LineType, RoundResults, RoundType } from "@/constants/types";
+import { RoundResults, RoundType } from "@/constants/types";
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { HEARTBEAT_INTERVAL } from "@/constants/constants";
 import { useGameState } from "@/hooks/useGameState";
@@ -26,7 +26,6 @@ const Drawer: React.FC = () => {
     updatePartialCurrentRound,
     updateCurrentRound,
     updateRoundResults,
-    updateLines,
   } = useActions();
   const { currentUser } = useAuth();
 
@@ -101,17 +100,17 @@ const Drawer: React.FC = () => {
       updateRoundResults(payload);
     });
 
-    newSocket.on("update-lines", (payload: { lines: Array<LineType> }) => {
-      updateLines(payload);
-    });
+    // newSocket.on("update-lines", (payload: { lines: Array<LineType> }) => {
+    //   updateLines(payload);
+    // });
 
     newSocket.on("add-peer", (payload: any) => {
-      console.log("ADD PEER: ", payload);
+      console.log("ADD PEER: ", JSON.stringify(payload));
       addPeer(payload);
     });
 
     newSocket.on("remove-peer", (payload: any) => {
-      console.log("REMOVE PEER: ", payload);
+      console.log("REMOVE PEER: ", JSON.stringify(payload));
       removePeer(payload);
     });
 
@@ -126,7 +125,7 @@ const Drawer: React.FC = () => {
     });
 
     newSocket.on("ice-candidate", (payload: any) => {
-      console.log("ICE CANDIDATE: ", payload);
+      console.log("ICE CANDIDATE: ", JSON.stringify(payload));
       if (payload.failed) {
         return updatePeerConnectionState(
           payload.peer.id,
@@ -153,7 +152,7 @@ const Drawer: React.FC = () => {
           console.log(
             "CHANNEL READY STATE: ",
             channel?.readyState,
-            userPeerData.current?.channels,
+            JSON.stringify(userPeerData.current?.channels),
             peerId
           );
           (peer?.iceConnectionState === "disconnected" ||

@@ -47,7 +47,12 @@ export class WebRTCService {
     this.handlers.setupPeerConnectionListeners(peer, peerId);
 
     peer.onicecandidate = async (event) => {
-      console.log("ICE candidate event:", event, new Date().getTime());
+      console.log(
+        "ICE candidate event, peerId, timestamp: ",
+        event,
+        peerId,
+        new Date().getTime()
+      );
       event.candidate &&
         this.relay({ peerId, event: "ice-candidate", data: event.candidate });
     };
@@ -127,16 +132,16 @@ export class WebRTCService {
           peer.localDescription,
           new Date().getTime()
         );
-        await this.relay({
+        this.relay({
           peerId,
           event: "session-description",
           data: answer,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Error handling session description (peerId: ${peerId}): `,
-        error
+        error.message
       );
       this.handlers.updatePeerConnectionState(
         peerId,
@@ -215,8 +220,11 @@ export class WebRTCService {
       if (channels[peerId].readyState === "open") {
         try {
           channels[peerId].send(data);
-        } catch (error) {
-          console.error(`Error broadcasting to peer ${peerId}: `, error);
+        } catch (error: any) {
+          console.error(
+            `Error broadcasting to peer ${peerId}: `,
+            error.message
+          );
           this.handlers.updatePeerConnectionState(
             peerId,
             ConnectionState.DISCONNECTED
