@@ -9,6 +9,7 @@ import {
   Round,
   RoundResults,
   ServerState,
+  Team,
   TimersMap,
   Word,
   Workers,
@@ -16,6 +17,7 @@ import {
 import { processingRoundResults, updateEvent } from "./api.js";
 import { Server, Socket } from "socket.io";
 import { type RedisClient } from "./redisClient.js";
+import { ImageGenerator } from "imageGenerator.js";
 
 export const AUTO_PICK_WORD_PREFIX = "word-auto-pick_";
 export const WORD_HINT_PREFIX = "word-hint_";
@@ -56,8 +58,11 @@ export const createEventInitialState = ({
     )
   );
 
-  const teams = hasuraTeams.map((team: any) => {
-    const shuffledPlayers = shuffleArray(team.players);
+  const teams = hasuraTeams.map((team: any): Team => {
+    const filteredTeamPlayers = gameInformationSketchWars.isLeadPlayerPlay
+      ? team.players
+      : team.players.slice(1);
+    const shuffledPlayers = shuffleArray(filteredTeamPlayers);
 
     const rounds = new Array(totalRounds).fill(null).map((_, index) => ({
       id: uuidv4(),
@@ -79,12 +84,12 @@ export const createEventInitialState = ({
 
     return {
       ...team,
+      players: filteredTeamPlayers,
       rounds,
     };
   });
 
   const firstRound = teams[0].rounds[0];
-
   // timersMap[`${AUTO_PICK_WORD_PREFIX}${firstRound.id}`] = setTimeout(() => {
   // handleStartRound({
   //   io,
@@ -251,6 +256,23 @@ export const handleProcessRoundResults = async ({
 
     if (currentTeam && currRound) {
       try {
+        const [width, height] = (currRound as Round).drawAreaSize
+            .split(", ")
+            .map((item: string) => +item),
+          fileName = `${(currRound as Round).word?.label} (${(currRound as Round).drawer.name})`;
+
+        await ImageGenerator.generateAndSaveImage(
+          {
+            lines: (currRound as Round).lines,
+            playerId: (currRound as Round).drawer.id,
+            teamId: currentTeam.id,
+            roundIndex: (currRound as Round).index,
+          },
+          width,
+          height,
+          fileName
+        );
+
         const updatedPlayers = await processingRoundResults({
           players: currentTeam.players,
           messages: (currRound as Round).messages,

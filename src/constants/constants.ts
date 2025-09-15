@@ -1,4 +1,5 @@
 export const MAX_ROUNDS = 8;
+export const MAX_PLAYERS = 8;
 export const RECONNECT_TIMEOUT = 5000;
 export const ICE_GATHERING_TIMEOUT = 10000;
 export const MAX_RECONNECT_ATTEMPTS = 3;

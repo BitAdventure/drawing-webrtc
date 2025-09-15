@@ -8,7 +8,7 @@
   justify-content: space-between;
 }
 
-.isDisabled.toggleWrap::before {
+.toggleWrap[data-disabled="true"]::before {
   display: block;
   content: "";
   position: absolute;
@@ -27,7 +27,7 @@
   height: 3.25rem;
 }
 
-.isDisabled.toggleWrap .toggler::before {
+.toggleWrap[data-disabled="true"] .toggler::before {
   display: block;
   content: "";
   position: absolute;
@@ -54,10 +54,10 @@
   border-radius: 1rem;
   background-color: #f9584a;
 }
-
-.isDisabled.toggleWrap .customToggle {
+/* 
+.toggleWrap[data-disabled="true"] .customToggle {
   background-color: #c5c5c5;
-}
+} */
 
 .labelText {
   cursor: pointer;
@@ -89,9 +89,9 @@
   opacity: 1;
 }
 
-.isDisabled.toggleWrap :where(.onText, .offText) {
+/* .toggleWrap[data-disabled="true"] :where(.onText, .offText) {
   color: #c5c5c5;
-}
+} */
 
 .checkedLabelWrap {
   position: absolute;
@@ -117,14 +117,11 @@
   background-color: #34a94d;
 }
 
+.toggleWrap[data-disabled="true"] .customToggle {
+  /* background-color: rgba(52, 169, 77, 0.6); */
+  opacity: 0.6;
+}
+
 .input:checked + .customToggle > .checkedLabelWrap {
   left: 50%;
 }
-/* 
-.input:checked + .customToggle .checkedIcon {
-  opacity: 1;
-}
-
-.input:checked + .customToggle .uncheckedIcon {
-  opacity: 0;
-} */

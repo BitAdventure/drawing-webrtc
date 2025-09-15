@@ -13,6 +13,7 @@ export type GameInfoType = {
   hints: boolean;
   totalRounds: number | null;
   categories: Array<string>;
+  isLeadPlayerPlay: boolean;
 };
 
 export type WordType = {
@@ -98,6 +99,10 @@ export type RoundResults = Array<
 >;
 
 export type AnswerResultType = "correct" | "wrong" | null;
+export type DrawingType = {
+  id: string;
+  name: string;
+};
 
 export interface WebRTCHandlers {
   onPeerData: (peerId: string, data: any) => void;

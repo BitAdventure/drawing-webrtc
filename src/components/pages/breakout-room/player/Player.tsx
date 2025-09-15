@@ -17,7 +17,7 @@ const Player: React.FC<PropsType> = ({ player }) => {
         [styles.playerWrap]: true,
         [styles[`player_${player.index}`]]: true,
       }),
-    [player]
+    [player.index]
   );
 
   return (

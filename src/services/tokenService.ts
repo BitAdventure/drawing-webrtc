@@ -32,6 +32,7 @@ class TokenServiceInstance {
     access_token: string;
     event_id?: string;
   }) {
+    localStorage.removeItem("is_artwork_skipped");
     localStorage.setItem("refresh_token", refresh_token);
     localStorage.setItem("access_token", access_token);
     event_id && localStorage.setItem("event_id", event_id);

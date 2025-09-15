@@ -18,6 +18,7 @@ import styles from "./style.module.css";
 type PropsType = {
   roundInfo: RoundType;
   isDrawer: boolean;
+  isViewMode: boolean;
   showAnswerResult: AnswerResultType;
   createMessage: (message: any) => void;
   currentUser: FieldValues;
@@ -28,6 +29,7 @@ type PropsType = {
 const DrawArea: React.FC<PropsType> = ({
   roundInfo,
   isDrawer,
+  isViewMode,
   showAnswerResult,
   createMessage,
   currentUser,
@@ -193,7 +195,11 @@ const DrawArea: React.FC<PropsType> = ({
   return (
     !!roundInfo && (
       <div className={styles.drawAreaWrap} ref={drawAreaRef}>
-        <RateDrawer isDrawer={isDrawer} handleRateDrawer={handleRateDrawer} />
+        <RateDrawer
+          isDrawer={isDrawer}
+          isViewMode={isViewMode}
+          handleRateDrawer={handleRateDrawer}
+        />
         {roundInfo.status === RoundStatuses.SHOW_RESULT ||
         roundInfo.status === RoundStatuses.COMPLETED ? (
           <Results roundInfo={roundInfo} />

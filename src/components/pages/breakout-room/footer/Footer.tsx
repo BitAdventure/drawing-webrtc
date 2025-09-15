@@ -34,7 +34,7 @@ const Footer: React.FC<PropsType> = ({
 
   const handleToggleSettings = useCallback(
     () => setIsOpenSettings((prev) => !prev),
-    []
+    [setIsOpenSettings]
   );
 
   const footerClass = useMemo(

@@ -7,14 +7,13 @@ import {
   getResults,
   sendReview,
   getCurrentPlayerReview,
-  generateResults,
-  updateEvent,
   startGame,
 } from "./GameThunks";
 import { RoundStatuses } from "@/constants/enums";
 import { modifySubscriptionEventInfo } from "@/utils/modifyEventInfo";
 import { SelectItemType } from "@/components/common/UI/select/Select";
 import {
+  DrawingType,
   EventInfoType,
   LineType,
   PlayerResultType,
@@ -35,6 +34,7 @@ export type GameInitialStateType = {
   wordCategoriesLoading: boolean;
   wordCategoriesError: boolean;
   resultPlacement: Array<PlayerResultType>;
+  drawings: Array<DrawingType>;
   resultLoading: boolean;
   resultError: boolean;
   isUserAlreadySendReview: boolean;
@@ -48,6 +48,7 @@ export type GameInitialStateType = {
   timeDifference: number;
   timeDifferenceLoading: boolean;
   timeDifferenceError: boolean;
+  updateGameSettingsLoading: boolean;
 };
 
 export const initialState: GameInitialStateType = {
@@ -63,6 +64,7 @@ export const initialState: GameInitialStateType = {
   wordCategoriesLoading: true,
   wordCategoriesError: false,
   resultPlacement: [],
+  drawings: [],
   resultLoading: true,
   resultError: false,
   isUserAlreadySendReview: false,
@@ -76,6 +78,7 @@ export const initialState: GameInitialStateType = {
   timeDifference: 0,
   timeDifferenceLoading: true,
   timeDifferenceError: false,
+  updateGameSettingsLoading: false,
 };
 
 const GameSlice = createSlice({
@@ -208,10 +211,14 @@ const GameSlice = createSlice({
       state.resultError = false;
       state.resultLoading = true;
     });
-    builder.addCase(getResults.fulfilled, (state, { payload }) => {
-      state.resultPlacement = payload;
-      state.resultLoading = false;
-    });
+    builder.addCase(
+      getResults.fulfilled,
+      (state, { payload: { players, drawings } }) => {
+        state.resultPlacement = players;
+        state.drawings = drawings;
+        state.resultLoading = false;
+      }
+    );
     builder.addCase(getResults.rejected, (state) => {
       state.resultError = true;
       state.resultLoading = false;
@@ -240,6 +247,15 @@ const GameSlice = createSlice({
       state.currentPlayerReviewError = true;
       state.currentPlayerReviewLoading = false;
     });
+    builder.addCase(updateGameSettings.pending, (state) => {
+      state.updateGameSettingsLoading = true;
+    });
+    builder.addCase(updateGameSettings.fulfilled, (state) => {
+      state.updateGameSettingsLoading = false;
+    });
+    builder.addCase(updateGameSettings.rejected, (state) => {
+      state.updateGameSettingsLoading = false;
+    });
   },
 });
 
@@ -253,7 +269,5 @@ export const GameActions = {
   getResults,
   sendReview,
   getCurrentPlayerReview,
-  generateResults,
-  updateEvent,
   startGame,
 };

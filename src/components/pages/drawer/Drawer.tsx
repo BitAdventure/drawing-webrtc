@@ -100,10 +100,6 @@ const Drawer: React.FC = () => {
       updateRoundResults(payload);
     });
 
-    // newSocket.on("update-lines", (payload: { lines: Array<LineType> }) => {
-    //   updateLines(payload);
-    // });
-
     newSocket.on("add-peer", (payload: any) => {
       console.log("ADD PEER: ", JSON.stringify(payload));
       addPeer(payload);
@@ -140,52 +136,48 @@ const Drawer: React.FC = () => {
     };
   }, [newSocket]);
 
-  useEffect(
-    () => {
-      const heartbeatInterval = setInterval(() => {
-        const peerIds = Object.keys(userPeerData.current?.peers || {});
+  useEffect(() => {
+    const heartbeatInterval = setInterval(() => {
+      const peerIds = Object.keys(userPeerData.current?.peers || {});
 
-        peerIds.forEach((peerId) => {
-          const peer = userPeerData.current?.peers[peerId];
-          const channel = userPeerData.current?.channels[peerId];
-          console.log("PEER ICE CONNECTION STATE: ", peer?.iceConnectionState);
-          console.log(
-            "CHANNEL READY STATE: ",
-            channel?.readyState,
-            JSON.stringify(userPeerData.current?.channels),
-            peerId
+      peerIds.forEach((peerId) => {
+        const peer = userPeerData.current?.peers[peerId];
+        const channel = userPeerData.current?.channels[peerId];
+        console.log("PEER ICE CONNECTION STATE: ", peer?.iceConnectionState);
+        console.log(
+          "CHANNEL READY STATE: ",
+          channel?.readyState,
+          JSON.stringify(userPeerData.current?.channels),
+          peerId
+        );
+        (peer?.iceConnectionState === "disconnected" ||
+          peer?.iceConnectionState === "failed" ||
+          peer?.iceConnectionState === "closed") &&
+          handlePeerDisconnect(peerId);
+
+        channel?.readyState === "open" &&
+          channel.send(
+            JSON.stringify({ event: "heartbeat", timestamp: Date.now() })
           );
-          (peer?.iceConnectionState === "disconnected" ||
-            peer?.iceConnectionState === "failed" ||
-            peer?.iceConnectionState === "closed") &&
-            handlePeerDisconnect(peerId);
+      });
+    }, HEARTBEAT_INTERVAL);
 
-          channel?.readyState === "open" &&
-            channel.send(
-              JSON.stringify({ event: "heartbeat", timestamp: Date.now() })
-            );
-        });
-      }, HEARTBEAT_INTERVAL);
-
-      return () => {
-        clearInterval(heartbeatInterval);
-        clearAllPeers();
-      };
-    },
-    [
-      // clearAllPeers,
-      // handlePeerDisconnect,
-    ]
-  );
+    return () => {
+      clearInterval(heartbeatInterval);
+      clearAllPeers();
+    };
+  }, []);
 
   const {
     isDrawer,
+    isViewMode,
     showAnswerResult,
     isCurrentUserGuessTheWord,
     handleNewMessage,
   } = useGameState({
     currentRound,
     newSocket,
+    players: eventInfo?.team.players || [],
   });
 
   return loading
@@ -203,6 +195,7 @@ const Drawer: React.FC = () => {
             <DrawArea
               roundInfo={currentRound}
               isDrawer={isDrawer}
+              isViewMode={isViewMode}
               showAnswerResult={showAnswerResult}
               createMessage={handleNewMessage}
               currentUser={currentUser}
@@ -213,6 +206,7 @@ const Drawer: React.FC = () => {
               currentRound={currentRound}
               handleNewMessage={handleNewMessage}
               isCurrentUserGuessTheWord={isCurrentUserGuessTheWord}
+              isViewMode={isViewMode}
               currentUser={currentUser}
             />
           </main>

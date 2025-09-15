@@ -62,6 +62,7 @@ const BreakoutRoom: React.FC = () => {
               drawTime
               hints
               totalRounds
+              isLeadPlayerPlay
               categories {
                 category {
                   id
@@ -102,7 +103,8 @@ const BreakoutRoom: React.FC = () => {
   }, [eventInfo?.status, eventInfo?.isStarted, id, navigate]);
 
   const handleStartGame = useCallback(() => {
-    if ((eventInfo?.team.players.length || 0) < 2)
+    const minPlayers = eventInfo?.gameInformation.isLeadPlayerPlay ? 2 : 3;
+    if ((eventInfo?.team.players.length || 0) < minPlayers)
       return toast.error("The game requires at least 2 players");
     eventInfo && startGame({ settingsData: eventInfo.gameInformation });
   }, [eventInfo, startGame]);
@@ -128,12 +130,6 @@ const BreakoutRoom: React.FC = () => {
         </div>
       </div>
       <div className={styles.contentWrap}>
-        {/* {!isLeadPlayer && (
-          <div className={styles.waitingText}>{`Waiting for ${
-            eventInfo.team.players[0].name || "Lead Player"
-          } to start the game...`}</div>
-        )} */}
-
         <div className={styles.logoWrap}>
           <img src={SWLogo} alt="Sketch Wars Logo" />
         </div>

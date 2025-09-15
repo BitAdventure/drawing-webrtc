@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import Button from "@/components/common/UI/button/Button";
 import CloseIcon from "@/assets/icons/close-icon.svg?react";
 import Toggle from "@/components/common/UI/customToggler/Toggle";
@@ -11,7 +11,7 @@ import IncrementTextField from "@/components/common/UI/incrementTextField/Increm
 import { useSelector } from "@/hooks/useSelector";
 import { useActions } from "@/hooks/useActions";
 import Categories from "./categories/Categories";
-import { MAX_ROUNDS } from "@/constants/constants";
+import { MAX_PLAYERS, MAX_ROUNDS } from "@/constants/constants";
 
 import styles from "./style.module.css";
 
@@ -33,9 +33,12 @@ const Settings: React.FC<PropsType> = ({
   onClose,
   settingsData,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const loading = useSelector((state) => state.game.updateGameSettingsLoading);
   const { updateGameSettings } = useActions();
   const categories = useSelector((state) => state.game.wordCategories);
+  const players = useSelector(
+    (state) => state.game.eventInfo?.team.players || []
+  );
   // const allWordsCategoryId = useSelector((state) => state.game.allWordsCategoryId);
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -44,7 +47,16 @@ const Settings: React.FC<PropsType> = ({
     formRef.current?.focus();
   });
 
-  const { handleSubmit, control } = useForm<FieldValues>({
+  const disableIsLeadPlayerPlayToggle = useMemo(
+    () => players.length > MAX_PLAYERS,
+    [players.length]
+  );
+
+  const {
+    handleSubmit,
+    control,
+    formState: { isDirty, dirtyFields },
+  } = useForm<FieldValues>({
     defaultValues: {
       ...settingsData,
       categories: settingsData.categories.length
@@ -72,12 +84,12 @@ const Settings: React.FC<PropsType> = ({
 
   const onSubmit = useCallback(
     async (data: FieldValues) => {
-      setLoading(true);
-      const successfulCallback = () => onClose();
-      await updateGameSettings({ data, successfulCallback });
-      setLoading(false);
+      console.log(dirtyFields);
+      isDirty
+        ? updateGameSettings({ data, successfulCallback: onClose })
+        : onClose();
     },
-    [onClose, updateGameSettings]
+    [onClose, updateGameSettings, isDirty, dirtyFields]
   );
 
   const handleSubmitForm = useCallback(
@@ -91,18 +103,20 @@ const Settings: React.FC<PropsType> = ({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      switch (e.key) {
-        case "Enter":
-          handleSubmitForm(e);
-          break;
-        case "Escape":
-          handleClose();
-          break;
-        default:
-          break;
+      if (!loading) {
+        switch (e.key) {
+          case "Enter":
+            handleSubmitForm(e);
+            break;
+          case "Escape":
+            handleClose();
+            break;
+          default:
+            break;
+        }
       }
     },
-    [handleSubmitForm, handleClose]
+    [handleSubmitForm, handleClose, loading]
   );
 
   const handleStopPropagation = useCallback(
@@ -153,6 +167,19 @@ const Settings: React.FC<PropsType> = ({
                   name="hints"
                   render={({ field: { ref, ...field } }) => (
                     <Toggle id={"hints"} label={"Hints"} {...field} />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="isLeadPlayerPlay"
+                  render={({ field: { ref, ...field } }) => (
+                    <Toggle
+                      id={"isLeadPlayerPlay"}
+                      label={"Will The Lead Player Play?"}
+                      labels={["Yes", "No"]}
+                      {...field}
+                      isDisabled={disableIsLeadPlayerPlayToggle}
+                    />
                   )}
                 />
               </div>

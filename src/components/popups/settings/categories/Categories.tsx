@@ -30,11 +30,7 @@ const Categories: React.FC<PropsType> = ({
           (value !== allWordsCategoryId &&
             selectedCategories.length === categories.length - 1)
         ) {
-          onChange(
-            categories.map((category: SelectItemType) =>
-              category.value.toString()
-            )
-          );
+          onChange(categories.map((category) => category.value.toString()));
         } else onChange([...selectedCategories, value]);
       } else if (value === allWordsCategoryId) {
         onChange([]);

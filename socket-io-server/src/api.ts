@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getRoundResults } from "./utils.js";
 import { Message, Player, RoundResults } from "./types.js";
+import FormData from "form-data";
 
 export const hasuraInstance = axios.create({
   baseURL: process.env.API_HASURA_BASE_URL,
@@ -10,7 +11,13 @@ export const hasuraInstance = axios.create({
   },
 });
 
+export const instance = axios.create({
+  baseURL: process.env.API_BASE_URL,
+  headers: {},
+});
+
 const GRAPHQL_URL = "graphql";
+const STORAGE_URL = "storage/files";
 
 export const getEventInfo = async (eventId: string) => {
   const graphqlQuery = {
@@ -38,6 +45,7 @@ export const getEventInfo = async (eventId: string) => {
             drawTime
             hints
             totalRounds
+            isLeadPlayerPlay
             categories {
               category {
                 id
@@ -158,3 +166,48 @@ export const processingRoundResults = async (payload: {
 
   return updatedPlayers;
 };
+
+export const createDrawing = async (drawing: {
+  fileId: string;
+  playerId: string;
+  roundIndex: number;
+  teamId: string;
+}): Promise<string> => {
+  const graphqlQuery = {
+    operationName: "MyMutation",
+    query: `mutation MyMutation ($drawing: sketchWars_drawings_insert_input!) {
+      insert_sketchWars_drawings_one(object: $drawing) {
+        fileId
+      }
+    }`,
+    variables: {
+      drawing,
+    },
+  };
+
+  return await hasuraInstance
+    .post(GRAPHQL_URL, graphqlQuery)
+    .then((res) => {
+      if (res.data.errors) {
+        const errorCode = res.data?.errors?.[0]?.extensions?.code;
+        throw new Error(errorCode || "Some Request Error");
+      }
+      return res.data;
+    })
+    .then((res) => res.data.insert_sketchWars_drawings_one.fileId);
+};
+
+export const uploadDrawing = async (formData: FormData) =>
+  await instance
+    .post(STORAGE_URL, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "x-hasura-admin-secret": process.env.HASURA_GRAPHQL_ADMIN_SECRET,
+      },
+    })
+    .then((res) => {
+      if (res.data.errors) {
+        throw new Error("Some Request Error");
+      }
+      return res.data.id;
+    });

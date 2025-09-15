@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useSelector } from "@/hooks/useSelector";
-import { PlayerType } from "@/constants/types";
 import Player from "./player/Player";
 import Chevron from "@/assets/icons/chevron-down-icon.svg?react";
 import classNames from "classnames";
@@ -16,10 +15,7 @@ const PlayersPanel: React.FC = () => {
   );
 
   const sortByResultPlayers = useMemo(
-    () =>
-      [...players].sort(
-        (a: PlayerType, b: PlayerType) => (b.result || 0) - (a.result || 0)
-      ),
+    () => [...players].sort((a, b) => (b.result || 0) - (a.result || 0)),
     [players]
   );
 

@@ -12,6 +12,7 @@ import styles from "./style.module.css";
 type PropsType = {
   currentRound: RoundType;
   isCurrentUserGuessTheWord: boolean;
+  isViewMode: boolean;
   currentUser: FieldValues;
   handleNewMessage: (message: any) => void;
 };
@@ -19,6 +20,7 @@ type PropsType = {
 const Chat: React.FC<PropsType> = ({
   currentRound,
   isCurrentUserGuessTheWord,
+  isViewMode,
   currentUser,
   handleNewMessage,
 }) => {
@@ -74,10 +76,11 @@ const Chat: React.FC<PropsType> = ({
 
   const disableInput = useMemo(
     () =>
+      isViewMode ||
       currentUser?.metadata.playerId === currentRound.drawer.id ||
       currentRound.status !== RoundStatuses.ONGOING ||
       isCurrentUserGuessTheWord,
-    [currentRound, currentUser, isCurrentUserGuessTheWord]
+    [isViewMode, currentRound, currentUser, isCurrentUserGuessTheWord]
   );
 
   return (

@@ -1,4 +1,5 @@
 import classNames from "classnames";
+import { useMemo } from "react";
 
 import styles from "./style.module.css";
 
@@ -8,6 +9,7 @@ type PropsType = {
   onChange: (e: any) => void;
   value: boolean;
   isDisabled?: boolean;
+  labels?: [string, string];
 };
 
 const Toggle: React.FC<PropsType> = ({
@@ -16,24 +18,24 @@ const Toggle: React.FC<PropsType> = ({
   onChange,
   value,
   isDisabled = false,
+  labels = ["On", "Off"],
 }) => {
-  const componentClass = classNames({
-    [styles.toggleWrap]: true,
-    [styles.isDisabled]: isDisabled,
-  });
-
-  const onText = classNames({
-    [styles.onText]: true,
-    [styles.on]: value,
-  });
-
-  const offText = classNames({
-    [styles.offText]: true,
-    [styles.off]: !value,
-  });
+  const { onText, offText } = useMemo(
+    () => ({
+      onText: classNames({
+        [styles.onText]: true,
+        [styles.on]: value,
+      }),
+      offText: classNames({
+        [styles.offText]: true,
+        [styles.off]: !value,
+      }),
+    }),
+    [value]
+  );
 
   return (
-    <div className={componentClass}>
+    <div className={styles.toggleWrap} data-disabled={isDisabled}>
       <label htmlFor={id} className={styles.labelText}>
         {label}
       </label>
@@ -47,12 +49,9 @@ const Toggle: React.FC<PropsType> = ({
         />
         <label htmlFor={id} className={styles.customToggle}>
           <div className={styles.checkedLabelWrap}>
-            <span className={onText}>On</span>
-            <span className={offText}>Off</span>
+            <span className={onText}>{labels[0]}</span>
+            <span className={offText}>{labels[1]}</span>
           </div>
-          {/* <div className={toggleTextWrap}>
-            
-          </div> */}
         </label>
       </div>
     </div>

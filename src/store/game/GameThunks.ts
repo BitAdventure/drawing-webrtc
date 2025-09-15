@@ -4,10 +4,14 @@ import { FieldValues } from "react-hook-form";
 import { GRAPHQL_URL } from "@/services/requestURLs";
 import TokenService from "@/services/tokenService";
 import { SelectItemType } from "@/components/common/UI/select/Select";
-import { GameInfoType, PlayerResultType, PlayerType } from "@/constants/types";
+import {
+  DrawingType,
+  GameInfoType,
+  PlayerResultType,
+  PlayerType,
+} from "@/constants/types";
 import { toast } from "react-toastify";
 import { RootState } from "@/hooks/useSelector";
-import { EventStatuses } from "@/constants/enums";
 import { Config } from "@/services/config";
 
 export const getTimeDifference = createAsyncThunk<
@@ -149,6 +153,7 @@ export const updateGameSettings = createAsyncThunk<
       totalRounds: restSettingsData.totalRounds,
       hints: restSettingsData.hints,
       drawTime: restSettingsData.drawTime,
+      isLeadPlayerPlay: restSettingsData.isLeadPlayerPlay,
     };
 
     const currentGameCategories =
@@ -296,7 +301,7 @@ export const startGame = createAsyncThunk<
 );
 
 export const getResults = createAsyncThunk<
-  Array<PlayerResultType>,
+  { players: Array<PlayerResultType>; drawings: Array<DrawingType> },
   string,
   { rejectValue: string }
 >("game/results", async (eventId, { rejectWithValue }) => {
@@ -306,6 +311,9 @@ export const getResults = createAsyncThunk<
       eventInfo: events_by_pk (id: $eventId) {
         id
         status
+        gameInformationSketchWars {
+          isLeadPlayerPlay
+        }
         teams {
           players (order_by: { result: desc_nulls_last }) {
             id
@@ -313,6 +321,12 @@ export const getResults = createAsyncThunk<
             index
             avatarId
             result
+          }
+          drawings (order_by: {roundIndex: asc }) {
+            file {
+              id
+              name
+            }
           }
         }
       }
@@ -335,15 +349,26 @@ export const getResults = createAsyncThunk<
       }
       return res.data;
     })
-    .then(
-      (res) =>
+    .then((res) => {
+      const modifiedPlayers =
         (res.data.eventInfo?.teams?.[0]?.players as Array<PlayerType>).map(
           (player, index) => ({
             ...player,
             rank: index,
           })
-        ) || []
-    )
+        ) || [];
+
+      return {
+        players: res.data.eventInfo?.gameInformationSketchWars?.isLeadPlayerPlay
+          ? modifiedPlayers
+          : modifiedPlayers.filter((player) => !!player.index),
+        drawings: (res.data.eventInfo?.teams?.[0]?.drawings || []).map(
+          (rawDrawing: { file: { id: string; name: string } }) => ({
+            ...rawDrawing.file,
+          })
+        ),
+      };
+    })
     .catch((e) => rejectWithValue(e.message));
 });
 
@@ -423,95 +448,3 @@ export const sendReview = createAsyncThunk<
       });
   }
 );
-
-const getRandomResult = () => Math.round(Math.random() * 1000);
-
-export const generateResults = createAsyncThunk<
-  FieldValues,
-  { players: Array<PlayerType>; eventId: string },
-  { rejectValue: string }
->(
-  "game/generate-results",
-  async ({ players, eventId }, { rejectWithValue }) => {
-    const updates = players.map((player) => ({
-      where: {
-        id: { _eq: player.id },
-      },
-      _set: { result: getRandomResult() },
-    }));
-
-    const graphqlQuery = {
-      operationName: "MyMutation",
-      query: `mutation MyMutation ($updates: [players_updates!]!, $eventId: uuid!) {
-        update_players_many (updates: $updates) {
-          returning {
-            result
-          }
-        }
-        update_events_by_pk(pk_columns: { id: $eventId}, _set: { status: ${EventStatuses.COMPLETED} }) {
-          id
-        }
-      }`,
-      variables: {
-        updates,
-        eventId,
-      },
-    };
-
-    return await hasuraInstance
-      .post(GRAPHQL_URL, graphqlQuery, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${TokenService.getLocalAccessToken()}`,
-        },
-      })
-      .then((res) => {
-        if (res.data.errors) {
-          throw new Error("Some Request Error");
-        }
-        return res.data;
-      })
-      .then((res) => res.data)
-      .catch((e) => {
-        toast.error("Some error. Try again");
-        return rejectWithValue(e.message);
-      });
-  }
-);
-
-export const updateEvent = createAsyncThunk<
-  string,
-  FieldValues,
-  { rejectValue: string }
->("game/update-event", async ({ eventId, updates }, { rejectWithValue }) => {
-  const graphqlQuery = {
-    operationName: "MyMutation",
-    query: `mutation MyMutation ($eventId: uuid!, $updates: events_set_input) {
-        update_events_by_pk(pk_columns: { id: $eventId}, _set: $updates) {
-          id
-        }
-      }`,
-    variables: {
-      eventId,
-      updates,
-    },
-  };
-
-  return await hasuraInstance
-    .post(GRAPHQL_URL, graphqlQuery, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${TokenService.getLocalAccessToken()}`,
-      },
-    })
-    .then((res) => {
-      if (res.data.errors) {
-        throw new Error("Some Request Error");
-      }
-      return res.data;
-    })
-    .then((res) => {
-      return res.data.update_events_by_pk.id;
-    })
-    .catch((e) => rejectWithValue(e.message));
-});

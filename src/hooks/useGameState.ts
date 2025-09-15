@@ -1,15 +1,22 @@
 import { useCallback, useMemo, useState } from "react";
-import { AnswerResultType, MessageType, RoundType } from "@/constants/types";
+import {
+  AnswerResultType,
+  MessageType,
+  PlayerType,
+  RoundType,
+} from "@/constants/types";
 import { useAuth } from "./useAuth";
 import { Socket } from "socket.io-client";
 
 interface UseGameStateParams {
   currentRound: RoundType | null;
   newSocket: Socket | null;
+  players: Array<PlayerType>;
 }
 
 interface UseGameStateReturn {
   isDrawer: boolean;
+  isViewMode: boolean;
   handleNewMessage: (message: MessageType) => void;
   showAnswerResult: AnswerResultType;
   isCurrentUserGuessTheWord: boolean;
@@ -18,6 +25,7 @@ interface UseGameStateReturn {
 export const useGameState = ({
   currentRound,
   newSocket,
+  players,
 }: UseGameStateParams): UseGameStateReturn => {
   const { currentUser } = useAuth();
   // Check if current user is drawer
@@ -27,6 +35,14 @@ export const useGameState = ({
       currentUser.metadata.playerId === currentRound?.drawer.id,
     [currentUser, currentRound]
   );
+
+  const isViewMode = useMemo(
+    () =>
+      !currentUser ||
+      !players.some((player) => player.id === currentUser.metadata.playerId),
+    [currentUser, players]
+  );
+
   const [showAnswerResult, setShowAnswerResult] =
     useState<AnswerResultType>(null);
 
@@ -61,6 +77,7 @@ export const useGameState = ({
 
   return {
     isDrawer,
+    isViewMode,
     handleNewMessage,
     showAnswerResult,
     isCurrentUserGuessTheWord,

@@ -62,6 +62,12 @@
   right: 21.25rem;
 }
 
+.player_8 {
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 @keyframes player-fade-in {
   0% {
     opacity: 0;
