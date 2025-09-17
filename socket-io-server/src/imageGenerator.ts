@@ -23,12 +23,7 @@ Konva.Util.createImageElement = () => {
   return node;
 };
 
-const BACKGROUND_IMAGE_PATH = path.join(
-  process.cwd(),
-  "src",
-  "assets",
-  "draw-area-bg.png"
-);
+const BACKGROUND_IMAGE_PATH = process.env.DRAW_AREA_BG_IMAGE_PATH;
 
 export class ImageGenerator {
   static async generateImageFromLines({
@@ -106,7 +101,7 @@ export class ImageGenerator {
     try {
       console.log("Generating image with background");
 
-      const bgImage = await loadImage(BACKGROUND_IMAGE_PATH);
+      const bgImage = await loadImage(BACKGROUND_IMAGE_PATH || "");
 
       ctx.drawImage(bgImage, 0, 0, width, height);
     } catch (error) {

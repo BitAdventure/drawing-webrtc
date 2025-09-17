@@ -20,6 +20,7 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
       TURN_SECRET: ${TURN_SECRET:-defaultsecret}
       TURN_SERVER_IP_ADDRESS: ${TURN_SERVER_IP_ADDRESS:-localhost}
+      DRAW_AREA_BG_IMAGE_PATH: ${DRAW_AREA_BG_IMAGE_PATH}
     expose:
       - 3000
     ports:

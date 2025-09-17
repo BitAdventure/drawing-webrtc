@@ -55,7 +55,7 @@ const Settings: React.FC<PropsType> = ({
   const {
     handleSubmit,
     control,
-    formState: { isDirty, dirtyFields },
+    formState: { isDirty },
   } = useForm<FieldValues>({
     defaultValues: {
       ...settingsData,
@@ -84,12 +84,11 @@ const Settings: React.FC<PropsType> = ({
 
   const onSubmit = useCallback(
     async (data: FieldValues) => {
-      console.log(dirtyFields);
       isDirty
         ? updateGameSettings({ data, successfulCallback: onClose })
         : onClose();
     },
-    [onClose, updateGameSettings, isDirty, dirtyFields]
+    [onClose, updateGameSettings, isDirty]
   );
 
   const handleSubmitForm = useCallback(

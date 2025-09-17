@@ -7,7 +7,7 @@
     "start": "node ./dist/index.js",
     "dev": "tsx --watch --env-file=.env ./src/index.ts",
     "build": "tsc --p tsconfig.json && pnpm run copy-assets",
-    "copy-assets": "cpx \"src/assets/**/*\" dist/src/assets"
+    "copy-assets": "cpx \"src/assets/**/*\" dist/assets"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.80",

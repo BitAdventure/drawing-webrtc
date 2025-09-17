@@ -20,7 +20,7 @@ const Drawing: React.FC<PropsType> = ({ drawing }) => {
         const url = window.URL.createObjectURL(new Blob([buffer]));
         var a = document.createElement("a");
         a.href = url;
-        a.download = id || "image.jpg";
+        a.download = (id || "image") + ".webp";
         document.body.appendChild(a);
         a.click();
         a.remove();
