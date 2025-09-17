@@ -3,7 +3,7 @@ import { Canvas, loadImage } from "@napi-rs/canvas";
 import { Line } from "./types.js";
 import FormData from "form-data";
 import path from "path";
-import { createDrawing, uploadDrawing } from "api.js";
+import { createDrawing, uploadDrawing } from "./api.js";
 
 // Configure Konva for Node.js environment
 Konva.Util.createCanvasElement = () => {
