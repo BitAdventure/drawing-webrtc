@@ -31,38 +31,6 @@ const BACKGROUND_IMAGE_PATH = path.join(
 );
 
 export class ImageGenerator {
-  // Helper method to draw lines
-  private static async drawLines(
-    canvas: Canvas,
-    ctx: any,
-    lines: Array<Line>
-  ): Promise<Buffer> {
-    lines.forEach((line) => {
-      ctx.beginPath();
-
-      // Set line style
-      ctx.lineWidth = line.thickness;
-      ctx.strokeStyle = line.color;
-      ctx.lineCap = "round"; // Smooth line endings
-      ctx.lineJoin = "round"; // Smooth line connections
-
-      // Draw the line based on points
-      if (line.points.length >= 2) {
-        ctx.moveTo(line.points[0], line.points[1]);
-
-        for (let i = 2; i < line.points.length; i += 2) {
-          ctx.lineTo(line.points[i], line.points[i + 1]);
-        }
-      }
-
-      ctx.stroke();
-    });
-
-    const imageBuffer = await canvas.encode("webp", 95);
-
-    return imageBuffer;
-  }
-
   static async generateImageFromLines({
     canvas,
     lines,
@@ -74,8 +42,6 @@ export class ImageGenerator {
     width: number;
     height: number;
   }): Promise<Buffer> {
-    // const canvas = new Canvas(width, height);
-
     const stage = new Konva.Stage({
       width,
       height,
@@ -94,7 +60,6 @@ export class ImageGenerator {
       const konvaLine = new Konva.Line({
         points: line.points,
         stroke: line.color,
-        // stroke: line.tool === "eraser" ? "rgba(255,255,255,0.5)" : line.color,
         strokeWidth: line.thickness,
         tension: 0.5,
         lineCap: "round",

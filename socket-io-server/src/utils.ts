@@ -17,7 +17,7 @@ import {
 import { processingRoundResults, updateEvent } from "./api.js";
 import { Server, Socket } from "socket.io";
 import { type RedisClient } from "./redisClient.js";
-import { ImageGenerator } from "imageGenerator.js";
+import { ImageGenerator } from "./imageGenerator.js";
 
 export const AUTO_PICK_WORD_PREFIX = "word-auto-pick_";
 export const WORD_HINT_PREFIX = "word-hint_";
