@@ -21,7 +21,7 @@ const Artwork: React.FC<PropsType> = ({ onSkipArtwork }) => {
           ))}
         </ul>
       </div>
-      <CommonFooter onClickHandler={onSkipArtwork} btnText={"Next"} />
+      <CommonFooter onClickHandler={onSkipArtwork} btnText={"Go To Results"} />
     </>
   );
 };
